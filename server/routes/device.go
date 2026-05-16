@@ -75,7 +75,7 @@ func (ctlr DeviceController) GetDevices(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(devices)
+	json.NewEncoder(w).Encode(devices) // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
 }
 
 func (ctlr DeviceController) SendCommand(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +114,7 @@ func (ctlr DeviceController) SendCommand(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]string{ // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
 		"status":  "success",
 		"message": fmt.Sprintf("Command %s sent to device %s", request.Command, request.DeviceID),
 	})

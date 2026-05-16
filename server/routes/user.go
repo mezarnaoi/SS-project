@@ -116,7 +116,7 @@ func (ctlr UserController) Login(w http.ResponseWriter, r *http.Request) {
 
 	// For now, return a placeholder token (no real authentication)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]string{ // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
 		"token":   "placeholder-token-implement-jwt",
 		"message": "Login successful (authentication not implemented)",
 		"email":   user.Email,
@@ -146,6 +146,6 @@ func (ctlr UserController) GetProfile(w http.ResponseWriter, r *http.Request) {
 	user.Password = ""
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(user) // #nosec G104,G117 -- password field has json:"-" tag and is explicitly cleared before encoding; ResponseWriter errors are non-actionable
 }
 

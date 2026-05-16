@@ -96,7 +96,7 @@ func (ctlr PhotoController) GetPhotos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(photos)
+	json.NewEncoder(w).Encode(photos) // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
 }
 
 func (ctlr PhotoController) DeletePhoto(w http.ResponseWriter, r *http.Request) {
@@ -135,13 +135,13 @@ func (ctlr PhotoController) DeletePhoto(w http.ResponseWriter, r *http.Request) 
 
 	// Delete the image file from local storage
 	fileName := fmt.Sprintf("uploads/photos/%d.%s", photo.Timestamp.Unix(), photo.ImageType)
-	if err := os.Remove(fileName); err != nil {
+	if err := os.Remove(fileName); err != nil { // #nosec G703 -- fileName built from Unix timestamp int and validated image type, not raw user input
 		fmt.Printf("Warning: Could not delete file %s: %v\n", fileName, err)
 		// Don't fail the request - the DB record is already deleted
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Photo deleted successfully"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Photo deleted successfully"}) // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
 }
 
 func (ctlr PhotoController) DeleteAllPhotos(w http.ResponseWriter, r *http.Request) {
@@ -167,12 +167,12 @@ func (ctlr PhotoController) DeleteAllPhotos(w http.ResponseWriter, r *http.Reque
 	files, err := filepath.Glob(filepath.Join(photosDir, "*"))
 	if err == nil {
 		for _, f := range files {
-			os.Remove(f)
+			os.Remove(f) // #nosec G104 -- best-effort cleanup, removal errors are non-critical
 		}
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]any{
+	json.NewEncoder(w).Encode(map[string]any{ // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
 		"message": "All photos deleted successfully",
 		"deleted": deletedCount,
 	})

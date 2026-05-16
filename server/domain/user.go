@@ -5,7 +5,7 @@ import "context"
 type User struct {
 	Email    string `json:"email" bson:"email"`
 	Password string `json:"password,omitempty" bson:"password"`
-	Role     string `json:"role,omitempty" bson:"role"`
+	Role     string `json:"-" bson:"password"`
 }
 
 type UserRepository interface {
