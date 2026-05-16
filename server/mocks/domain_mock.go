@@ -137,6 +137,21 @@ func (mr *MockPhotoRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockPhotoRepository)(nil).Delete), ctx, id)
 }
 
+// DeleteAll mocks base method.
+func (m *MockPhotoRepository) DeleteAll(ctx context.Context) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAll", ctx)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteAll indicates an expected call of DeleteAll.
+func (mr *MockPhotoRepositoryMockRecorder) DeleteAll(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAll", reflect.TypeOf((*MockPhotoRepository)(nil).DeleteAll), ctx)
+}
+
 // MockDeviceRepository is a mock of DeviceRepository interface.
 type MockDeviceRepository struct {
 	ctrl     *gomock.Controller
