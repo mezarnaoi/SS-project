@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
   authRequired: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ authRequired: _authRequired }) => {
   // TODO: Implement authentication checks
   // Currently bypassing all auth - allowing access to all routes
