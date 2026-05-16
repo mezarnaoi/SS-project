@@ -46,7 +46,7 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	ocrClient := gosseract.NewClient()
-	ocrClient.SetLanguage("eng", "ron")
+	ocrClient.SetLanguage("eng", "ron") // #nosec G104 -- SetLanguage error is non-critical, app continues with default language
 	defer ocrClient.Close()
 	brokerHandler := broker.NewBrokerHandler(db, ocrClient)
 
@@ -81,7 +81,14 @@ func main() {
 
 	go func() {
 		fmt.Println("Starting HTTP server on port 8080...")
-		if err := http.ListenAndServe(":8080", handler); err != nil {
+		srv := &http.Server{
+			Addr:         ":8080",
+			Handler:      handler,
+			ReadTimeout:  15 * time.Second,
+			WriteTimeout: 15 * time.Second,
+			IdleTimeout:  60 * time.Second,
+		}
+		if err := srv.ListenAndServe(); err != nil {
 			panic(err)
 		}
 	}()

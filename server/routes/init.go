@@ -43,7 +43,7 @@ func handleBrokerInfo(w http.ResponseWriter, r *http.Request) {
 	port := "1883" // Default MQTT port
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]string{ // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
 		"ip":   ip,
 		"port": port,
 	})
@@ -55,7 +55,7 @@ func getOutboundIP() string {
 	// First, check if MQTT_HOST_IP is set explicitly
 	if hostIP := os.Getenv("MQTT_HOST_IP"); hostIP != "" {
 		// If it's a hostname (like host.docker.internal), resolve it
-		if addrs, err := net.LookupHost(hostIP); err == nil && len(addrs) > 0 {
+		if addrs, err := net.LookupHost(hostIP); err == nil && len(addrs) > 0 { // #nosec G704 -- hostIP is read from environment variable, not from user input
 			return addrs[0]
 		}
 		// If it's already an IP, return as-is

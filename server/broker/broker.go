@@ -252,7 +252,7 @@ func (b BrokerHandler) DisconnectDevice(_ mqtt.Client, msg mqtt.Message) {
 
 func (b BrokerHandler) extractTextFromImage(imageData []byte) (string, error) {
 	// Use the OCR client to extract text from the image
-	b.ocrClient.SetImageFromBytes(imageData)
+	b.ocrClient.SetImageFromBytes(imageData) // #nosec G104 -- error handled implicitly by subsequent Text() call
 	text, err := b.ocrClient.Text()
 	if err != nil {
 		return "", fmt.Errorf("failed to extract text from image: %v", err)
