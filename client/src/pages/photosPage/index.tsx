@@ -271,7 +271,7 @@ const PhotosPage: React.FC = () => {
       <h1 className="text-2xl font-semibold text-sky-700 mb-6">Photos</h1>
 
       {/* Search and filter section */}
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+      <div className="bg-white text-gray-900 p-4 rounded-lg shadow-sm mb-6">
         <div className="flex flex-wrap items-end gap-4">
           {/* Text search */}
           <div className="flex-1 min-w-[200px]">

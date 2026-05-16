@@ -8,10 +8,12 @@ import DevicesPage from './pages/devicesPage';
 import StatisticsPage from './pages/statisticsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
 const Layout = () => {
   const navigate = useNavigate();
   const { isLoggedIn, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   // Left-side buttons (only shown when logged in)
   const leftButtons = isLoggedIn
@@ -38,6 +40,11 @@ const Layout = () => {
   const rightButtons = isLoggedIn
     ? [
       {
+        text: isDark ? '☀️ Light' : '🌙 Dark',
+        variant: 'outline' as const,
+        onClick: toggleTheme
+        },
+      {
         text: 'Logout',
         variant: 'outline' as const,
         onClick: () => {
@@ -47,6 +54,11 @@ const Layout = () => {
       }
     ]
     : [
+      {
+        text: isDark ? '☀️ Light' : '🌙 Dark',
+        variant: 'outline' as const,
+        onClick: toggleTheme
+      },
       {
         text: 'Login',
         variant: 'outline' as const,
@@ -66,7 +78,7 @@ const Layout = () => {
         leftButtons={leftButtons}
         rightButtons={rightButtons}
       />
-      <div className="pt-16 px-4">
+      <div className="pt-16 px-4 min-h-screen bg-white dark:bg-gray-900 dark:text-gray-100 transition-colors">
         <Outlet />
       </div>
     </>
@@ -76,8 +88,9 @@ const Layout = () => {
 const App = () => {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+      <ThemeProvider>  
+        <AuthProvider>
+          <Routes>
           {/* Common layout for all routes */}
           <Route element={<Layout />}>
             {/* Public routes - accessible to everyone */}
@@ -99,8 +112,9 @@ const App = () => {
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
-        </Routes>
-      </AuthProvider>
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 };
