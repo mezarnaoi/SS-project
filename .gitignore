@@ -1,0 +1,39 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+secrets/
+
+# Node
+node_modules/
+client/dist/
+client/.yarn/cache
+.yarn/cache
+
+# Go build artifacts
+server/*.exe
+server/server
+server/tmp/
+
+# Docker volumes & runtime
+uploads/
+.dev-runtime/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+*.out
