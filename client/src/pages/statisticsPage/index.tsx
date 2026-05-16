@@ -194,7 +194,7 @@ const StatisticsPage: React.FC = () => {
             <h1 className="text-2xl font-semibold text-sky-700 mb-6">Statistics</h1>
 
             {/* Date Filter */}
-            <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex gap-4 items-end">
+            <div className="bg-white text-gray-900 p-4 rounded-lg shadow-sm mb-6 flex gap-4 items-end">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                     <input
@@ -231,7 +231,7 @@ const StatisticsPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
                     {/* Control Type Chart */}
-                    <div className="bg-white p-6 rounded-lg shadow-md">
+                    <div className="bg-white text-gray-900 p-6 rounded-lg shadow-md">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-medium text-gray-800">Control Type Distribution</h3>
                             {renderChartToggle(controlChartType, setControlChartType)}
@@ -242,7 +242,7 @@ const StatisticsPage: React.FC = () => {
                     </div>
 
                     {/* Aviz Medical Chart */}
-                    <div className="bg-white p-6 rounded-lg shadow-md">
+                    <div className="bg-white text-gray-900 p-6 rounded-lg shadow-md">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-medium text-gray-800">Medical Opinion Results</h3>
                             {renderChartToggle(avizChartType, setAvizChartType)}
