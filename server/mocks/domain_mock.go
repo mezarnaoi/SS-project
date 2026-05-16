@@ -152,6 +152,21 @@ func (mr *MockPhotoRepositoryMockRecorder) DeleteAll(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAll", reflect.TypeOf((*MockPhotoRepository)(nil).DeleteAll), ctx)
 }
 
+// GetByID mocks base method.
+func (m *MockPhotoRepository) GetByID(ctx context.Context, id string) (*domain.Photo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, id)
+	ret0, _ := ret[0].(*domain.Photo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockPhotoRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockPhotoRepository)(nil).GetByID), ctx, id)
+}
+
 // MockDeviceRepository is a mock of DeviceRepository interface.
 type MockDeviceRepository struct {
 	ctrl     *gomock.Controller
