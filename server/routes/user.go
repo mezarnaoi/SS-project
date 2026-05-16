@@ -146,6 +146,6 @@ func (ctlr UserController) GetProfile(w http.ResponseWriter, r *http.Request) {
 	user.Password = ""
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user) // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
+	json.NewEncoder(w).Encode(user) // #nosec G104,G117 -- password field has json:"-" tag and is explicitly cleared before encoding; ResponseWriter errors are non-actionable
 }
 
