@@ -3,8 +3,11 @@ package routes
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
 	"net/http"
 
+	jwt "github.com/golang-jwt/jwt/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 
@@ -25,7 +28,7 @@ func InitUserRoutes(db *mongo.Database, mux *http.ServeMux) {
 	mux.HandleFunc("/login", userController.Login)
 	// TODO: Implement authentication - See docs/AUTH_IMPLEMENTATION.md
 	// Use noAuth middleware (or withAuth once implemented) for protected routes
-	mux.Handle("/profile", noAuth(http.HandlerFunc(userController.GetProfile)))
+	mux.Handle("/profile", withAuth(http.HandlerFunc(userController.GetProfile)))
 }
 
 func (ctlr UserController) Register(w http.ResponseWriter, r *http.Request) {
@@ -95,33 +98,22 @@ func (ctlr UserController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Implement JWT token generation - See docs/AUTH_IMPLEMENTATION.md
-	// Example implementation:
-	/*
-	import "github.com/golang-jwt/jwt/v4"
-
 	claims := jwt.MapClaims{
 		"email": user.Email,
 		"role":  user.Role,
 		"exp":   time.Now().Add(time.Hour * 24).Unix(),
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := jwtToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
-	*/
 
-	// For now, return a placeholder token (no real authentication)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{ // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
-		"token":   "placeholder-token-implement-jwt",
-		"message": "Login successful (authentication not implemented)",
-		"email":   user.Email,
-		"role":    user.Role,
-	})
+	if err := json.NewEncoder(w).Encode(map[string]string{"token": tokenString}); err != nil { // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func (ctlr UserController) GetProfile(w http.ResponseWriter, r *http.Request) {

@@ -34,25 +34,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // TODO: Implement real authentication
-  // Currently auto-logging in as guest (no real authentication)
   useEffect(() => {
-    // Auto-login as guest for development (authentication not implemented)
-    setToken('guest-placeholder-token');
-    setIsLoggedIn(true);
-    setIsAdmin(true);
-    setLoading(false);
-
-    // Original implementation (uncomment when implementing real auth):
-    /*
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      setToken(storedToken);
-      setIsLoggedIn(true);
-      setIsAdmin(true);
-    }
-    setLoading(false);
-    */
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+          setToken(storedToken);
+          setIsLoggedIn(true);
+          setIsAdmin(true);
+      }
+      setLoading(false);
   }, []);
 
   const login = (newToken: string) => {
