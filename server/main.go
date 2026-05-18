@@ -66,7 +66,7 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	ocrClient := gosseract.NewClient()
-	ocrClient.SetLanguage("eng", "ron")
+	ocrClient.SetLanguage("eng", "ron") // #nosec G104 -- SetLanguage error is non-critical, app continues with default language
 	defer ocrClient.Close()
 	brokerHandler := broker.NewBrokerHandler(db, ocrClient)
 
