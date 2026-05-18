@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,8 +20,26 @@ import (
 	"mqtt-streaming-server/routes"
 )
 
-// TODO: Implement mTLS security
-// See docs/SECURITY_IMPLEMENTATION.md for instructions on how to configure TLS
+func NewTLSConfig() *tls.Config {
+	certpool := x509.NewCertPool()
+	pemCerts, err := os.ReadFile("/run/secrets/ca.crt")
+	if err != nil {
+		panic(err)
+	}
+	certpool.AppendCertsFromPEM(pemCerts)
+
+	cert, err := tls.LoadX509KeyPair("/run/secrets/web.crt", "/run/secrets/web.key")
+	if err != nil {
+		panic(err)
+	}
+
+	return &tls.Config{
+		RootCAs:            certpool,
+		ClientCAs:          certpool,
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: false, // #nosec G402 -- hostname verified via RootCAs
+	}
+}
 
 func main() {
 	// Connect to MongoDB
@@ -46,13 +66,15 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	ocrClient := gosseract.NewClient()
-	ocrClient.SetLanguage("eng", "ron") // #nosec G104 -- SetLanguage error is non-critical, app continues with default language
+	ocrClient.SetLanguage("eng", "ron")
 	defer ocrClient.Close()
 	brokerHandler := broker.NewBrokerHandler(db, ocrClient)
 
+	tlsconfig := NewTLSConfig()
+
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker("tcp://broker:1883")
-	opts.SetClientID("web")
+	opts.AddBroker("ssl://broker:8883")
+	opts.SetClientID("web").SetTLSConfig(tlsconfig)
 
 	// Start the connection
 	client := mqtt.NewClient(opts)
