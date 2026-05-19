@@ -13,3 +13,14 @@
 | Captură de imagini utilizând camera dispozitivului | ` ` |
 | Transmisie securizată prin MQTT folosind mTLS sau similar | ` ` |
 | Mod offline (stocare locală) | ` ` |
+
+
+## mTLS
+```bash
+bash scripts/gen-certs.sh
+```
+
+Write UID and GUID in .env
+```bash
+id -u && id -g
+```

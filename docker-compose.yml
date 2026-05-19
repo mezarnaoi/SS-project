@@ -17,13 +17,9 @@ services:
       - 8080:8080
     volumes:
       - ./uploads:/app/uploads
+      - ./secrets:/run/secrets:ro
     networks:
       - backend
-    # TODO: Implement mTLS security - See docs/SECURITY_IMPLEMENTATION.md
-    # secrets:
-    #   - ca.crt
-    #   - web.crt
-    #   - web.key
 
   broker:
     user: "${UID}:${GID}"
@@ -31,17 +27,13 @@ services:
     container_name: broker
     hostname: broker
     ports:
-      # - "8883:8883"  # TODO: Uncomment for mTLS
-      - "1883:1883"
+      - "8883:8883"
+    # - "1883:1883"
     volumes:
       - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./secrets:/run/secrets:ro
     networks:
       - backend
-    # TODO: Implement mTLS security - See docs/SECURITY_IMPLEMENTATION.md
-    # secrets:
-    #   - ca.crt
-    #   - server.crt
-    #   - server.key
 
   mongo-db:
     container_name: mongo-db
@@ -61,7 +53,6 @@ volumes:
 networks:
   backend:
 
-# TODO: Implement mTLS security - See docs/SECURITY_IMPLEMENTATION.md
 # secrets:
 #   ca.crt:
 #     file: ./secrets/ca.crt

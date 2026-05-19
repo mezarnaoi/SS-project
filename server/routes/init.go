@@ -42,7 +42,7 @@ func handleBrokerInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Get the server's local IP address
 	ip := getOutboundIP()
-	port := "1883" // Default MQTT port
+	port := "8883" // mTLS port
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{ // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
