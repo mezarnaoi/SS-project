@@ -19,6 +19,10 @@ import (
 	"mqtt-streaming-server/utils"
 )
 
+const (
+	ocrConfidenceThreshold = 95.0
+)
+
 type BrokerHandler struct {
 	photoRepository  domain.PhotoRepository
 	deviceRepository domain.DeviceRepository
@@ -53,7 +57,6 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			fmt.Printf("Device ID not found: %s. Auto-registering...\n", deviceID)
-			// Auto-register the device
 			newDevice := &domain.Device{
 				DeviceID:     deviceID,
 				DeviceName:   "Unknown Device (" + deviceID + ")",
@@ -70,6 +73,7 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 		}
 	}
 	fmt.Printf("Received photo from device: %s\n", device.DeviceName)
+
 	body := msg.Payload()
 	_, imageType, err := image.DecodeConfig(bytes.NewReader(body))
 	if err != nil {
@@ -78,13 +82,14 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	}
 	fmt.Printf("Image type: %s\n", imageType)
 
-	// Extract text from image
-	text, err := b.extractTextFromImage(body)
+	text, confidence, err := b.extractTextFromImage(body)
 	if err != nil {
 		fmt.Printf("Failed to extract text from image: %v\n", err)
 		text = "OCR failed"
+		confidence = 0
 	}
-	
+	fmt.Printf("OCR confidence: %.2f%%\n", confidence)
+
 	// Try to extract structured medical data
 	var medicalData *utils.MedicalData
 	if utils.IsMedicalCertificate(text) {
@@ -93,18 +98,26 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 			fmt.Printf("Extracted medical data: %+v\n", medicalData)
 		}
 	}
-	
-	// UTC timestamp
+
 	timestamp := time.Now().UTC()
-	
-	// Create photo with flattened medical data
+
 	photo := &domain.Photo{
-		ImageType: imageType,
-		Timestamp: timestamp,
-		DeviceID:  deviceID,
-		Text:      text,
+		ImageType:     imageType,
+		Timestamp:     timestamp,
+		DeviceID:      deviceID,
+		Text:          text,
+		OCRConfidence: confidence,
 	}
-	
+
+	if confidence < ocrConfidenceThreshold {
+		photo.NeedsReview = true
+		photo.ReviewReason = fmt.Sprintf(
+			"OCR confidence %.1f%% is below the %.0f%% threshold; extracted fields require human verification",
+			confidence, ocrConfidenceThreshold,
+		)
+		fmt.Printf("Photo flagged for review: %s\n", photo.ReviewReason)
+	}
+
 	// Copy medical data fields directly to photo (flattened)
 	if medicalData != nil {
 		photo.UnitateMedicala = medicalData.UnitateMedicala
@@ -126,30 +139,57 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 		photo.ControlReluare = medicalData.ControlReluare
 		photo.ControlSupraveghere = medicalData.ControlSupraveghere
 		photo.ControlAlte = medicalData.ControlAlte
-
 		photo.AvizMedical = medicalData.AvizMedical
 		photo.AvizApt = medicalData.AvizApt
 		photo.AvizAptConditionat = medicalData.AvizAptConditionat
 		photo.AvizInaptTemporar = medicalData.AvizInaptTemporar
 		photo.AvizInapt = medicalData.AvizInapt
-
 		photo.Recomandari = medicalData.Recomandari
 		photo.Data = medicalData.Data
 		photo.DataUrmExaminari = medicalData.DataUrmExaminari
 	}
-	
+
 	err = b.photoRepository.Save(ctx, photo)
 	if err != nil {
 		fmt.Printf("Failed to insert photo into MongoDB: %v\n", err)
 		return
 	}
-	// Save photo locally
+
 	keyName := fmt.Sprintf("photos/%d.%s", timestamp.Unix(), imageType)
 	if err := utils.SaveToLocal(body, keyName); err != nil {
 		fmt.Printf("Failed to save photo locally: %v\n", err)
 		return
 	}
-	fmt.Printf("Photo saved locally with key: %s\n", keyName)
+	fmt.Printf("Photo saved: %s (needsReview=%v)\n", keyName, photo.NeedsReview)
+}
+
+// returns the OCR text and the average Tesseract word
+func (b BrokerHandler) extractTextFromImage(imageData []byte) (string, float64, error) {
+	b.ocrClient.SetImageFromBytes(imageData) // #nosec G104 -- error handled implicitly by Text()
+
+	text, err := b.ocrClient.Text()
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to extract text from image: %v", err)
+	}
+
+	boxes, err := b.ocrClient.GetBoundingBoxes(gosseract.RIL_WORD)
+	if err != nil || len(boxes) == 0 {
+		// OCR unavailable
+		return text, 0, nil
+	}
+
+	var total float64
+	count := 0
+	for _, box := range boxes {
+		if box.Confidence > 0 {
+			total += float64(box.Confidence)
+			count++
+		}
+	}
+	if count == 0 {
+		return text, 0, nil
+	}
+	return text, total / float64(count), nil
 }
 
 func (b BrokerHandler) RegisterDevice(_ mqtt.Client, msg mqtt.Message) {
@@ -229,35 +269,24 @@ func (b BrokerHandler) DisconnectDevice(_ mqtt.Client, msg mqtt.Message) {
 	fmt.Println("Received message on topic:", msg.Topic())
 	message := string(msg.Payload())
 	fmt.Printf("Received device disconnection: %s\n", message)
-	
+
 	if message != "Device Disconnected" {
 		fmt.Printf("Invalid disconnection message: %s\n", message)
 		return
 	}
-	
+
 	device, err := b.deviceRepository.GetByID(ctx, deviceID)
 	if err != nil {
-		// handle error
 		return
 	}
 	if device.DeviceStatus != "active" {
 		return
 	}
-	err = b.deviceRepository.Update(ctx, deviceID, &domain.Device{
+	_ = b.deviceRepository.Update(ctx, deviceID, &domain.Device{
 		DeviceID:     deviceID,
 		DeviceStatus: "inactive",
 		DeviceName:   device.DeviceName,
 	})
-}
-
-func (b BrokerHandler) extractTextFromImage(imageData []byte) (string, error) {
-	// Use the OCR client to extract text from the image
-	b.ocrClient.SetImageFromBytes(imageData) // #nosec G104 -- error handled implicitly by subsequent Text() call
-	text, err := b.ocrClient.Text()
-	if err != nil {
-		return "", fmt.Errorf("failed to extract text from image: %v", err)
-	}
-	return text, nil
 }
 
 func (b BrokerHandler) HandleCommand(_ mqtt.Client, msg mqtt.Message) {

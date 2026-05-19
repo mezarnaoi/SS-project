@@ -19,6 +19,10 @@ interface Photo {
   presigned_url: string;
   device_id: string;
   text: string;
+  ocr_confidence?: number;
+  needs_review?: boolean;
+  review_reason?: string;
+  reviewed_by?: string;
 }
 
 // Interface for search parameters to store in localStorage
@@ -66,6 +70,7 @@ const PhotosPage: React.FC = () => {
   const [photosError, setPhotosError] = useState<string | null>(null);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [showOnlyUnreviewed, setShowOnlyUnreviewed] = useState(false);
 
   // Command state
   const [commandLoading, setCommandLoading] = useState(false);
@@ -400,6 +405,20 @@ const PhotosPage: React.FC = () => {
               Delete All
             </button>
           </div>
+
+          {/* Review filter */}
+          <div className="flex items-center gap-2 ml-2">
+            <input
+              id="unreviewed-filter"
+              type="checkbox"
+              checked={showOnlyUnreviewed}
+              onChange={(e) => setShowOnlyUnreviewed(e.target.checked)}
+              className="h-4 w-4 accent-orange-500 cursor-pointer"
+            />
+            <label htmlFor="unreviewed-filter" className="text-sm text-gray-700 cursor-pointer whitespace-nowrap">
+              Needs review only
+            </label>
+          </div>
         </div>
       </div>
 
@@ -460,25 +479,42 @@ const PhotosPage: React.FC = () => {
         {/* Results grid */}
         {!photosLoading && !photosError && (
           <>
-            {(photos || []).length === 0 ? (
-              <div className="text-center text-gray-500 py-10">
-                No photos found matching your search criteria
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {(photos || []).map(photo => (
-                  <PhotoCard
-                    key={photo.id}
-                    photoId={photo.id}
-                    imageUrl={photo.presigned_url}
-                    extractedText={photo.text}
-                    altText={`Photo from ${new Date(photo.timestamp).toLocaleDateString()}`}
-                    isAdmin={isAdmin}
-                    onDelete={handleDeletePhoto}
-                  />
-                ))}
-              </div>
-            )}
+            {(() => {
+              const visible = (photos || []).filter(p =>
+                showOnlyUnreviewed ? (p.needs_review && !p.reviewed_by) : true
+              );
+              return visible.length === 0 ? (
+                <div className="text-center text-gray-500 py-10">
+                  {showOnlyUnreviewed
+                    ? 'No photos awaiting review'
+                    : 'No photos found matching your search criteria'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {visible.map(photo => (
+                    <PhotoCard
+                      key={photo.id}
+                      photoId={photo.id}
+                      imageUrl={photo.presigned_url}
+                      extractedText={photo.text}
+                      altText={`Photo from ${new Date(photo.timestamp).toLocaleDateString()}`}
+                      isAdmin={isAdmin}
+                      onDelete={handleDeletePhoto}
+                      needsReview={photo.needs_review}
+                      reviewReason={photo.review_reason}
+                      ocrConfidence={photo.ocr_confidence ?? 0}
+                      reviewedBy={photo.reviewed_by}
+                      token={token ?? ''}
+                      onReviewed={(id) =>
+                        setPhotos(prev => prev.map(p =>
+                          p.id === id ? { ...p, needs_review: false, reviewed_by: 'me' } : p
+                        ))
+                      }
+                    />
+                  ))}
+                </div>
+              );
+            })()}
           </>
         )}
       </div>

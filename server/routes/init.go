@@ -26,7 +26,6 @@ func InitRoutes(db *mongo.Database, mqttClient mqtt.Client) http.Handler {
 	InitDeviceRoutes(db, mqttClient, mux)
 
 	// Serve static files from ./uploads
-	// Ensure the directory exists or handle errors gracefully, but FileServer is robust enough.
 	fs := http.FileServer(http.Dir("uploads"))
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", fs))
 
@@ -93,7 +92,7 @@ func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers
 		w.Header().Set("Access-Control-Allow-Origin", "*") // Replace * with your domain in production
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
 		// Handle preflight requests
