@@ -15,23 +15,16 @@ import {
     Cell,
 } from 'recharts';
 
-// Interface for photo data, including the new boolean fields
+// Interface for photo data
 interface Photo {
     id: string;
     timestamp: string;
-
-    // Boolean fields from backend
-    control_angajare?: boolean;
-    control_periodic?: boolean;
-    control_adaptare?: boolean;
-    control_reluare?: boolean;
-    control_supraveghere?: boolean;
-    control_alte?: boolean;
-
-    aviz_apt?: boolean;
-    aviz_apt_conditionat?: boolean;
-    aviz_inapt_temporar?: boolean;
-    aviz_inapt?: boolean;
+    // Primary control type string (used for chart — avoids double-counting boolean flags)
+    tip_control?: string;
+    aviz_medical?: string;
+    data_urm_examinari?: string;
+    ocr_confidence?: number;
+    needs_review?: boolean;
 }
 
 const StatisticsPage: React.FC = () => {
@@ -89,9 +82,9 @@ const StatisticsPage: React.FC = () => {
         }
     };
 
-    // Process data for charts
+    // Process data for charts — use the primary string fields to avoid double-counting
     const getControlStats = () => {
-        const stats = {
+        const stats: Record<string, number> = {
             'Angajare': 0,
             'Periodic': 0,
             'Adaptare': 0,
@@ -101,19 +94,20 @@ const StatisticsPage: React.FC = () => {
         };
 
         photos.forEach(photo => {
-            if (photo.control_angajare) stats['Angajare']++;
-            if (photo.control_periodic) stats['Periodic']++;
-            if (photo.control_adaptare) stats['Adaptare']++;
-            if (photo.control_reluare) stats['Reluare']++;
-            if (photo.control_supraveghere) stats['Supraveghere']++;
-            if (photo.control_alte) stats['Alte']++;
+            const t = (photo.tip_control ?? '').toLowerCase();
+            if (t.includes('angajare'))          stats['Angajare']++;
+            else if (t.includes('periodic'))     stats['Periodic']++;
+            else if (t.includes('adaptare'))     stats['Adaptare']++;
+            else if (t.includes('relua'))        stats['Reluare']++;
+            else if (t.includes('supraveghere')) stats['Supraveghere']++;
+            else if (t.includes('alte'))         stats['Alte']++;
         });
 
         return Object.entries(stats).map(([name, value]) => ({ name, value }));
     };
 
     const getAvizStats = () => {
-        const stats = {
+        const stats: Record<string, number> = {
             'APT': 0,
             'APT Conditionat': 0,
             'Inapt Temporar': 0,
@@ -121,10 +115,11 @@ const StatisticsPage: React.FC = () => {
         };
 
         photos.forEach(photo => {
-            if (photo.aviz_apt) stats['APT']++;
-            if (photo.aviz_apt_conditionat) stats['APT Conditionat']++;
-            if (photo.aviz_inapt_temporar) stats['Inapt Temporar']++;
-            if (photo.aviz_inapt) stats['Inapt']++;
+            const a = (photo.aviz_medical ?? '').toUpperCase();
+            if (a === 'APT')                  stats['APT']++;
+            else if (a === 'APT CONDITIONAT') stats['APT Conditionat']++;
+            else if (a === 'INAPT TEMPORAR')  stats['Inapt Temporar']++;
+            else if (a === 'INAPT')           stats['Inapt']++;
         });
 
         return Object.entries(stats).map(([name, value]) => ({ name, value }));
@@ -252,8 +247,8 @@ const StatisticsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Simple Summary Cards */}
-                    <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Summary Cards */}
+                    <div className="col-span-1 md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                             <span className="block text-sm text-blue-600 font-medium">Total Files</span>
                             <span className="block text-2xl font-bold text-blue-900">{photos.length}</span>
@@ -264,11 +259,18 @@ const StatisticsPage: React.FC = () => {
                                 {avizData.find(d => d.name === 'APT')?.value || 0}
                             </span>
                         </div>
-                        <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                            <span className="block text-sm text-orange-600 font-medium">Periodic Checks</span>
-                            <span className="block text-2xl font-bold text-orange-900">
+                        <div className="bg-sky-50 p-4 rounded-lg border border-sky-100">
+                            <span className="block text-sm text-sky-600 font-medium">Periodic Checks</span>
+                            <span className="block text-2xl font-bold text-sky-900">
                                 {controlData.find(d => d.name === 'Periodic')?.value || 0}
                             </span>
+                        </div>
+                        <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                            <span className="block text-sm text-orange-600 font-medium">Needs Review</span>
+                            <span className="block text-2xl font-bold text-orange-900">
+                                {photos.filter(p => p.needs_review).length}
+                            </span>
+                            <span className="block text-xs text-orange-400 mt-1">OCR confidence &lt; 95%</span>
                         </div>
                     </div>
                 </div>

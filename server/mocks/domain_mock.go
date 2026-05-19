@@ -167,6 +167,20 @@ func (mr *MockPhotoRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockPhotoRepository)(nil).GetByID), ctx, id)
 }
 
+// UpdateReview mocks base method.
+func (m *MockPhotoRepository) UpdateReview(ctx context.Context, id string, reviewedBy string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateReview", ctx, id, reviewedBy)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateReview indicates an expected call of UpdateReview.
+func (mr *MockPhotoRepositoryMockRecorder) UpdateReview(ctx, id, reviewedBy any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateReview", reflect.TypeOf((*MockPhotoRepository)(nil).UpdateReview), ctx, id, reviewedBy)
+}
+
 // MockDeviceRepository is a mock of DeviceRepository interface.
 type MockDeviceRepository struct {
 	ctrl     *gomock.Controller

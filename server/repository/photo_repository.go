@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -22,7 +24,7 @@ func (repo *photoRepository) GetPhotos(ctx context.Context, filters map[string]a
 	collection := repo.db.Collection("photos")
 	photos := make([]*domain.Photo, 0)
 	cursor, err := collection.Find(ctx, filters, &options.FindOptions{
-		Sort: map[string]int{"timestamp": -1}, // Sort by timestamp in descending order
+		Sort: map[string]int{"timestamp": -1},
 	})
 	if err != nil {
 		return nil, err
@@ -81,4 +83,23 @@ func (repo *photoRepository) DeleteAll(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	return result.DeletedCount, nil
+}
+
+func (repo *photoRepository) UpdateReview(ctx context.Context, id string, reviewedBy string) error {
+	collection := repo.db.Collection("photos")
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	_, err = collection.UpdateOne(
+		ctx,
+		bson.M{"_id": objID},
+		bson.M{"$set": bson.M{
+			"needs_review": false,
+			"reviewed_by":  reviewedBy,
+			"reviewed_at":  now,
+		}},
+	)
+	return err
 }

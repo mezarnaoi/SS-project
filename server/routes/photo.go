@@ -26,9 +26,9 @@ func InitPhotoRoutes(db *mongo.Database, mux *http.ServeMux) {
 		PhotoRepository: repository.NewPhotoRepository(db),
 	}
 
-	// TODO: Implement authentication - See docs/AUTH_IMPLEMENTATION.md
 	mux.Handle("/photos", withAuth(http.HandlerFunc(photoController.GetPhotos)))
 	mux.Handle("/photos/all", withAuth(http.HandlerFunc(photoController.DeleteAllPhotos)))
+	mux.Handle("/photos/review/", withAuth(http.HandlerFunc(photoController.ApproveReview)))
 	mux.Handle("/photos/", withAuth(http.HandlerFunc(photoController.DeletePhoto)))
 }
 
@@ -142,6 +142,30 @@ func (ctlr PhotoController) DeletePhoto(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Photo deleted successfully"}) // #nosec G104 -- encoding errors on http.ResponseWriter are non-actionable
+}
+
+func (ctlr PhotoController) ApproveReview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/photos/review/")
+	if path == "" {
+		http.Error(w, "Photo ID required", http.StatusBadRequest)
+		return
+	}
+
+	email, _ := r.Context().Value("email").(string)
+
+	if err := ctlr.PhotoRepository.UpdateReview(r.Context(), path, email); err != nil {
+		fmt.Println("Error approving review:", err)
+		http.Error(w, "Failed to approve review", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Review approved"}) // #nosec G104
 }
 
 func (ctlr PhotoController) DeleteAllPhotos(w http.ResponseWriter, r *http.Request) {
