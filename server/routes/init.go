@@ -7,10 +7,16 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	jwt "github.com/golang-jwt/jwt/v4"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.mongodb.org/mongo-driver/mongo"
+)
+
+const (
+	RateLimitRequests = 60          // max requests per window per IP
+	RateLimitWindow   = time.Minute // sliding window duration
 )
 
 func InitRoutes(db *mongo.Database, mqttClient mqtt.Client) http.Handler {
@@ -28,9 +34,9 @@ func InitRoutes(db *mongo.Database, mqttClient mqtt.Client) http.Handler {
 	mux.HandleFunc("/broker-info", handleBrokerInfo)
 
 	corsHandler := withCORS(mux)
+	rateLimited := withRateLimit(RateLimitRequests, RateLimitWindow)(corsHandler)
 
-	// Add other middleware here if needed
-	return corsHandler
+	return rateLimited
 }
 
 // handleBrokerInfo returns the MQTT broker IP and port for client connections
