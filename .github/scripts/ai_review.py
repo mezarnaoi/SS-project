@@ -37,7 +37,7 @@ def review_with_groq(diff: str) -> str:
     """Send diff to Groq (Llama 3.1) and get security/quality review"""
     import time
 
-    api_key = os.environ["GROQ_API_KEY"]
+    api_key = os.environ["GROQ_API_KEY"].strip()
     url = "https://api.groq.com/openai/v1/chat/completions"
 
     prompt = f"""You are a security-focused code reviewer for a medical OCR platform handling PHI (Patient Health Information).
@@ -70,7 +70,16 @@ Diff:
             with urllib.request.urlopen(req) as response:
                 result = json.loads(response.read())
             return result["choices"][0]["message"]["content"]
+        # except urllib.error.HTTPError as e:
+        #     if e.code == 429:
+        #         wait = 10 * (attempt + 1)
+        #         print(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/5)...")
+        #         time.sleep(wait)
+        #     else:
+        #         raise
         except urllib.error.HTTPError as e:
+            error_body = e.read().decode("utf-8", errors="replace")
+            print(f"HTTP {e.code} error: {error_body}")
             if e.code == 429:
                 wait = 10 * (attempt + 1)
                 print(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/5)...")
