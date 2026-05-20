@@ -36,6 +36,8 @@ def get_pr_diff():
 
 def review_with_gemini(diff: str) -> str:
     """Send diff to Gemini and get security/quality review"""
+    import time
+
     api_key = os.environ["GEMINI_API_KEY"]
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
 
@@ -59,13 +61,21 @@ Diff:
         "generationConfig": {"maxOutputTokens": 600}
     }).encode("utf-8")
 
-    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+    for attempt in range(5):
+        try:
+            req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                wait = 10 * (attempt + 1)
+                print(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/5)...")
+                time.sleep(wait)
+            else:
+                raise
 
-    with urllib.request.urlopen(req) as response:
-        result = json.loads(response.read())
-
-    return result["candidates"][0]["content"]["parts"][0]["text"]
-
+    return "⚠️ AI review unavailable due to rate limiting. Please review manually."
 
 def post_comment(review: str):
     """Post the review as a PR comment"""
