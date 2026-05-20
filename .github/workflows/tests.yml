@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Unit Tests & Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev
+
+      - name: Run tests with coverage
+        working-directory: server
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Print coverage summary
+        working-directory: server
+        run: go tool cover -func=coverage.out
+
+      - name: Check coverage threshold
+        working-directory: server
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Total coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 50" | bc -l) )); then
+            echo "Coverage ${COVERAGE}% is below 50% threshold"
+            exit 1
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: server/coverage.out
+        if: always()
