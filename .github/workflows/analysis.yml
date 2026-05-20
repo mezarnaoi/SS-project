@@ -23,21 +23,19 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev
 
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          working-directory: server
-          args: --timeout=5m --out-format=sarif --output.sarif.path=golangci-results.sarif
-        continue-on-error: true
+        working-directory: server
+        run: golangci-lint run --timeout=5m --out-format sarif > golangci-results.sarif || true
 
       - name: Upload golangci-lint SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: server/golangci-results.sarif
           category: golangci-lint
         if: always()
-
   codeql:
     name: CodeQL
     runs-on: ubuntu-latest
@@ -49,7 +47,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: go, javascript-typescript
           queries: security-and-quality
@@ -58,9 +56,9 @@ jobs:
         run: sudo apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: codeql
