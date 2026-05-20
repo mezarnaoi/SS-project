@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"golang.org/x/crypto/bcrypt"
 
 	"go.uber.org/mock/gomock"
 
@@ -82,6 +83,7 @@ func TestUserController_Register(t *testing.T) {
 }
 
 func TestUserController_Login(t *testing.T) {
+	validHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	tests := []struct {
 		name             string
 		inputBody        string
@@ -95,7 +97,7 @@ func TestUserController_Login(t *testing.T) {
 			inputBody: `{"email": "test@example.com", "password": "password123"}`,
 			mockUser: &domain.User{
 				Email:    "test@example.com",
-				Password: "$2a$12$.OZ5oYXEsFvcaaVh/nmgt.cknGSFzKVlr.wkrzyCl5rgHuAGGkhiS",
+				Password: string(validHash),
 			},
 			mockError:      nil,
 			expectedStatus: http.StatusOK,
