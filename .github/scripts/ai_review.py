@@ -33,12 +33,12 @@ def get_pr_diff():
 
     return "\n\n".join(diff_parts) if diff_parts else None
 
-def review_with_groq(diff: str) -> str:
-    """Send diff to Groq (Llama 3.1) and get security/quality review"""
+def review_with_ai(diff: str) -> str:
+    """Send diff to GitHub Models (Llama 3.1) for security review"""
     import time
 
-    api_key = os.environ["GROQ_API_KEY"].strip()
-    url = "https://api.groq.com/openai/v1/chat/completions"
+    token = os.environ["GITHUB_TOKEN"]
+    url = "https://models.inference.ai.azure.com/chat/completions"
 
     prompt = f"""You are a security-focused code reviewer for a medical OCR platform handling PHI (Patient Health Information).
 
@@ -56,33 +56,26 @@ Diff:
 {diff}"""
 
     body = json.dumps({
-        "model": "llama-3.1-8b-instant",
+        "model": "meta-llama-3.1-8b-instruct",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 600
     }).encode("utf-8")
 
-    for attempt in range(5):
+    for attempt in range(3):
         try:
             req = urllib.request.Request(url, data=body, headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
+                "Authorization": f"Bearer {token}"
             })
             with urllib.request.urlopen(req) as response:
                 result = json.loads(response.read())
             return result["choices"][0]["message"]["content"]
-        # except urllib.error.HTTPError as e:
-        #     if e.code == 429:
-        #         wait = 10 * (attempt + 1)
-        #         print(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/5)...")
-        #         time.sleep(wait)
-        #     else:
-        #         raise
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", errors="replace")
-            print(f"HTTP {e.code} error: {error_body}")
+            print(f"HTTP {e.code}: {error_body}")
             if e.code == 429:
                 wait = 10 * (attempt + 1)
-                print(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/5)...")
+                print(f"Rate limited, waiting {wait}s...")
                 time.sleep(wait)
             else:
                 raise
@@ -95,7 +88,7 @@ def post_comment(review: str):
     pr_number = os.environ["PR_NUMBER"]
     token = os.environ["GITHUB_TOKEN"]
 
-    body = f"## 🤖 AI Security Review (Llama 3.1 via Groq)\n\n{review}\n\n---\n*This review is AI-generated. Human approval is still required before merge.*"
+    body = f"## 🤖 AI Security Review (Llama 3.1 via GitHub Models)\n\n{review}\n\n---\n*This review is AI-generated. Human approval is still required before merge.*"
 
     url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
     data = json.dumps({"body": body}).encode("utf-8")
@@ -121,8 +114,8 @@ def main():
         print("No reviewable files changed, skipping.")
         return
 
-    print("Sending to Groq for review...")
-    review = review_with_groq(diff)
+    print("Sending to AI for review...")
+    review = review_with_ai(diff)
 
     print("Posting review comment...")
     post_comment(review)
