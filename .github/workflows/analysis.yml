@@ -1,0 +1,70 @@
+name: Static Analysis
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 1'
+
+jobs:
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Run golangci-lint
+        working-directory: server
+        run: |
+          golangci-lint run --timeout=5m \
+            --output.formats "sarif:golangci-results.sarif" \
+            || true
+          if [ ! -s golangci-results.sarif ]; then
+            echo '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"golangci-lint","rules":[]}},"results":[]}]}' > golangci-results.sarif
+          fi
+
+      - name: Upload golangci-lint SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: server/golangci-results.sarif
+          category: golangci-lint
+        if: always()
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: go, javascript-typescript
+          queries: security-and-quality
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql
