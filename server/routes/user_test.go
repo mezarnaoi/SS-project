@@ -383,3 +383,60 @@ func FuzzUserController_Register(f *testing.F) {
 		}
 	})
 }
+
+func FuzzUserController_Login(f *testing.F) {
+	validHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+
+	seedInputs := []string{
+		`{"email": "test@example.com", "password": "password123"}`,
+		`{"email": "", "password": ""}`,
+		`{"email": "a@b.c", "password": "x"}`,
+		`not-json`,
+		`{"email": "test@example.com"}`,
+		`{"password": "password123"}`,
+		`{"email": "` + strings.Repeat("a", 1000) + `@test.com", "password": "pass"}`,
+	}
+	for _, input := range seedInputs {
+		f.Add(input)
+	}
+
+	f.Fuzz(func(t *testing.T, input string) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockRepo := mock_domain.NewMockUserRepository(ctrl)
+		ctlr := routes.UserController{UserRepository: mockRepo}
+
+		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(input))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+
+		var parsed struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+
+		if err := json.Unmarshal([]byte(input), &parsed); err == nil && parsed.Email != "" {
+			mockRepo.EXPECT().
+				FindByEmail(gomock.Any(), parsed.Email).
+				Return(&domain.User{
+					Email:    parsed.Email,
+					Password: string(validHash),
+					Role:     "user",
+				}, nil).
+				AnyTimes()
+		} else {
+			mockRepo.EXPECT().
+				FindByEmail(gomock.Any(), gomock.Any()).
+				Return(nil, errors.New("not found")).
+				AnyTimes()
+		}
+
+		ctlr.Login(rr, req)
+
+		if rr.Code == 0 {
+			t.Error("handler returned status 0")
+		}
+	})
+}
+
