@@ -1,0 +1,72 @@
+name: Fuzzing
+
+on:
+  schedule:
+    - cron: '0 22 * * 6'
+  workflow_dispatch:
+    inputs:
+      fuzz_time:
+        description: 'Fuzz time per function (e.g. 10m, 1h)'
+        required: false
+        default: '30m'
+
+jobs:
+  fuzz:
+    name: Fuzz Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev
+
+      - name: Restore fuzz corpus
+        uses: actions/cache@v4
+        with:
+          path: server/testdata/fuzz
+          key: fuzz-corpus-${{ github.sha }}
+          restore-keys: fuzz-corpus-
+
+      - name: Fuzz UserController_Register
+        working-directory: server
+        run: go test ./routes/ -run='^$' -fuzz=FuzzUserController_Register -fuzztime=${{ github.event.inputs.fuzz_time || '5h' }}
+        continue-on-error: true
+
+      - name: Fuzz UserController_Login
+        working-directory: server
+        run: go test ./routes/ -run='^$' -fuzz=FuzzUserController_Login -fuzztime=${{ github.event.inputs.fuzz_time || '5h' }}
+        continue-on-error: true
+
+      - name: Fuzz PhotoController_GetPhotos
+        working-directory: server
+        run: go test ./routes/ -run='^$' -fuzz=FuzzPhotoController_GetPhotos -fuzztime=${{ github.event.inputs.fuzz_time || '5h' }}
+        continue-on-error: true
+
+      - name: Fuzz WithAuth
+        working-directory: server
+        run: go test ./routes/ -run='^$' -fuzz=FuzzWithAuth -fuzztime=${{ github.event.inputs.fuzz_time || '5h' }}
+        continue-on-error: true
+
+      - name: Save fuzz corpus
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: server/testdata/fuzz
+          key: fuzz-corpus-${{ github.sha }}
+
+      - name: Upload corpus artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-corpus-${{ github.run_id }}
+          path: server/testdata/fuzz
+          retention-days: 90
