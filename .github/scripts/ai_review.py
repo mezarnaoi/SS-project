@@ -57,7 +57,7 @@ Diff:
 
     body = json.dumps({
         "model": "llama-3.1-8b-instant",
-        "messages": [{"role": "user", "content": "prompt"}],
+        "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 600
     }).encode("utf-8")
 
@@ -112,7 +112,7 @@ def main():
         print("No reviewable files changed, skipping.")
         return
 
-    print("Sending to Gemini for review...")
+    print("Sending to Groq for review...")
     review = review_with_groq(diff)
 
     print("Posting review comment...")
