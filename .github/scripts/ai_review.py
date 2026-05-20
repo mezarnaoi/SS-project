@@ -33,13 +33,12 @@ def get_pr_diff():
 
     return "\n\n".join(diff_parts) if diff_parts else None
 
-
-def review_with_gemini(diff: str) -> str:
-    """Send diff to Gemini and get security/quality review"""
+def review_with_groq(diff: str) -> str:
+    """Send diff to Groq (Llama 3.1) and get security/quality review"""
     import time
 
-    api_key = os.environ["GEMINI_API_KEY"]
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    api_key = os.environ["GROQ_API_KEY"]
+    url = "https://api.groq.com/openai/v1/chat/completions"
 
     prompt = f"""You are a security-focused code reviewer for a medical OCR platform handling PHI (Patient Health Information).
 
@@ -57,16 +56,20 @@ Diff:
 {diff}"""
 
     body = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 600}
+        "model": "llama-3.1-8b-instant",
+        "messages": [{"role": "user", "content": "prompt"}],
+        "max_tokens": 600
     }).encode("utf-8")
 
     for attempt in range(5):
         try:
-            req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+            req = urllib.request.Request(url, data=body, headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            })
             with urllib.request.urlopen(req) as response:
                 result = json.loads(response.read())
-            return result["candidates"][0]["content"]["parts"][0]["text"]
+            return result["choices"][0]["message"]["content"]
         except urllib.error.HTTPError as e:
             if e.code == 429:
                 wait = 10 * (attempt + 1)
@@ -75,7 +78,7 @@ Diff:
             else:
                 raise
 
-    return "⚠️ AI review unavailable due to rate limiting. Please review manually."
+    return "⚠️ AI review unavailable. Please review manually."
 
 def post_comment(review: str):
     """Post the review as a PR comment"""
@@ -83,7 +86,7 @@ def post_comment(review: str):
     pr_number = os.environ["PR_NUMBER"]
     token = os.environ["GITHUB_TOKEN"]
 
-    body = f"## 🤖 AI Security Review (Gemini 2.0 Flash)\n\n{review}\n\n---\n*This review is AI-generated. Human approval is still required before merge.*"
+    body = f"## 🤖 AI Security Review (Llama 3.1 via Groq)\n\n{review}\n\n---\n*This review is AI-generated. Human approval is still required before merge.*"
 
     url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
     data = json.dumps({"body": body}).encode("utf-8")
@@ -110,7 +113,7 @@ def main():
         return
 
     print("Sending to Gemini for review...")
-    review = review_with_gemini(diff)
+    review = review_with_groq(diff)
 
     print("Posting review comment...")
     post_comment(review)
