@@ -56,6 +56,16 @@ jobs:
         run: go test ./routes/ -run='^$' -fuzz=FuzzWithAuth -fuzztime=${{ github.event.inputs.fuzz_time || '5h' }}
         continue-on-error: true
 
+      - name: Fuzz OCR Image Decode
+        working-directory: server
+        run: go test ./broker/ -run='^$' -fuzz=FuzzImageDecode -fuzztime=${{ github.event.inputs.fuzz_time || '5h' }}
+        continue-on-error: true
+
+      - name: Fuzz OCR Processing
+        working-directory: server
+        run: go test ./broker/ -run='^$' -fuzz=FuzzOCRProcessing -fuzztime=${{ github.event.inputs.fuzz_time || '5h' }}
+        continue-on-error: true
+
       - name: Save fuzz corpus
         uses: actions/cache/save@v4
         if: always()
