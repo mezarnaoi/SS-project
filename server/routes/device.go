@@ -35,8 +35,11 @@ func (ctlr DeviceController) SwitchDeviceMode(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-
-
+	role, _ := r.Context().Value("role").(string)
+	if role != "admin" {
+	    http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	    return
+	}
 
 
 	var device struct {
@@ -61,6 +64,12 @@ func (ctlr DeviceController) GetDevices(w http.ResponseWriter, r *http.Request) 
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+
+	role, _ := r.Context().Value("role").(string)
+	if role != "admin" {
+	    http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	    return
 	}
 
 	ctx := r.Context()
