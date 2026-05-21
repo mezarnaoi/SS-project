@@ -6,6 +6,7 @@ import RegisterPage from './pages/register';
 import PhotosPage from './pages/photosPage';
 import DevicesPage from './pages/devicesPage';
 import StatisticsPage from './pages/statisticsPage';
+import ReportsPage from './pages/reportsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -32,6 +33,11 @@ const Layout = () => {
         text: 'Statistics',
         variant: 'secondary' as const,
         onClick: () => navigate('/statistics')
+      },
+      {
+        text: 'Reports',
+        variant: 'secondary' as const,
+        onClick: () => navigate('/reports')
       }
     ]
     : [];
@@ -107,6 +113,7 @@ const App = () => {
               <Route path="/photos" element={<PhotosPage />} />
               <Route path="/devices" element={<DevicesPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
             </Route>
 
             {/* Fallback route */}

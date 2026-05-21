@@ -24,6 +24,7 @@ func InitRoutes(db *mongo.Database, mqttClient mqtt.Client) http.Handler {
 	InitUserRoutes(db, mux)
 	InitPhotoRoutes(db, mux)
 	InitDeviceRoutes(db, mqttClient, mux)
+	InitReportRoutes(db, mux)
 
 	// Serve static files from ./uploads
 	fs := http.FileServer(http.Dir("uploads"))
