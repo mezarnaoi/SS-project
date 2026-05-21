@@ -40,7 +40,6 @@ func NewBrokerHandler(db *mongo.Database, ocrClient *gosseract.Client) BrokerHan
 func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	topic := msg.Topic()
 	var deviceID string
-	// topic is ssproject/images/device_id or just ssproject/images
 	if topic == "ssproject/images" {
 		deviceID = "camera_stream"
 	} else if len(topic) > len("ssproject/images/") {
@@ -52,7 +51,6 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	ctx := context.Background()
 	fmt.Println("Received message on topic:", msg.Topic())
 
-	// get registered device
 	device, err := b.deviceRepository.GetByID(ctx, deviceID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -82,6 +80,8 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	}
 	fmt.Printf("Image type: %s\n", imageType)
 
+	processingStart := time.Now()
+
 	text, confidence, err := b.extractTextFromImage(body)
 	if err != nil {
 		fmt.Printf("Failed to extract text from image: %v\n", err)
@@ -90,7 +90,6 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	}
 	fmt.Printf("OCR confidence: %.2f%%\n", confidence)
 
-	// Try to extract structured medical data
 	var medicalData *utils.MedicalData
 	if utils.IsMedicalCertificate(text) {
 		medicalData = utils.ParseMedicalCertificate(text)
@@ -99,14 +98,18 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 		}
 	}
 
+	processingTimeMs := time.Since(processingStart).Milliseconds()
+	fmt.Printf("Processing time: %dms\n", processingTimeMs)
+
 	timestamp := time.Now().UTC()
 
 	photo := &domain.Photo{
-		ImageType:     imageType,
-		Timestamp:     timestamp,
-		DeviceID:      deviceID,
-		Text:          text,
-		OCRConfidence: confidence,
+		ImageType:        imageType,
+		Timestamp:        timestamp,
+		DeviceID:         deviceID,
+		Text:             text,
+		OCRConfidence:    confidence,
+		ProcessingTimeMs: processingTimeMs,
 	}
 
 	if confidence < ocrConfidenceThreshold {
@@ -118,7 +121,6 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 		fmt.Printf("Photo flagged for review: %s\n", photo.ReviewReason)
 	}
 
-	// Copy medical data fields directly to photo (flattened)
 	if medicalData != nil {
 		photo.UnitateMedicala = medicalData.UnitateMedicala
 		photo.AdresaUnitateMedicala = medicalData.AdresaUnitateMedicala
@@ -201,7 +203,6 @@ func (b BrokerHandler) RegisterDevice(_ mqtt.Client, msg mqtt.Message) {
 	body := msg.Payload()
 	fmt.Printf("Received device registration: %s\n", body)
 
-	// Parse JSON payload: {"name": "...", "ip": "...", "port": "..."}
 	var deviceName, ipAddress, port string
 	var registration struct {
 		Name string `json:"name"`

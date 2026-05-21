@@ -15,14 +15,13 @@ type Photo struct {
 	DeviceID     string             `json:"device_id" bson:"device_id"`
 	Text         string             `json:"text" bson:"text"`
 
-	// OCR Confidence Score 
-	OCRConfidence float64    `json:"ocr_confidence" bson:"ocr_confidence"`
+	OCRConfidence    float64 `json:"ocr_confidence" bson:"ocr_confidence"`
+	ProcessingTimeMs int64   `json:"processing_time_ms" bson:"processing_time_ms"`
 	NeedsReview   bool       `json:"needs_review" bson:"needs_review"`
 	ReviewReason  string     `json:"review_reason,omitempty" bson:"review_reason,omitempty"`
 	ReviewedBy    string     `json:"reviewed_by,omitempty" bson:"reviewed_by,omitempty"`
 	ReviewedAt    *time.Time `json:"reviewed_at,omitempty" bson:"reviewed_at,omitempty"`
 
-	// Medical Data Fields - flattened (each as separate column)
 	UnitateMedicala        string    `json:"unitate_medicala" bson:"unitate_medicala"`
 	AdresaUnitateMedicala  string    `json:"adresa_unitate_medicala" bson:"adresa_unitate_medicala"`
 	TelefonUnitateMedicala string    `json:"telefon_unitate_medicala" bson:"telefon_unitate_medicala"`
