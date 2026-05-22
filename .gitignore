@@ -37,3 +37,6 @@ logs/
 # Test coverage
 coverage/
 *.out
+
+# Local evidence artifacts generated during testing
+evidence/
