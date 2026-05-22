@@ -13,6 +13,9 @@ permissions:
   contents: read
   security-events: write
   actions: read
+  id-token: write
+  attestations: write
+
 
 jobs:
   evidence-plane:
@@ -88,28 +91,62 @@ jobs:
 
       - name: Write evidence manifest
         run: |
-          cat > evidence/evidence-manifest.md <<'EOF'
+          cat > evidence/evidence-manifest.md <<EOF
           # Evidence Manifest
 
           This artifact bundle was generated automatically by GitHub Actions.
 
+          ## Workflow context
+
+          - Repository: ${{ github.repository }}
+          - Commit SHA: ${{ github.sha }}
+          - Ref: ${{ github.ref }}
+          - Actor: ${{ github.actor }}
+          - Event: ${{ github.event_name }}
+          - Workflow: ${{ github.workflow }}
+          - Run ID: ${{ github.run_id }}
+          - Run number: ${{ github.run_number }}
+          - Run attempt: ${{ github.run_attempt }}
+
           ## Included evidence
 
-          - `sbom/sbom.spdx.json` - repository SBOM in SPDX JSON format
-          - `sbom/backend-cyclonedx.json` - Go backend SBOM in CycloneDX format, if generated successfully
-          - `tests/go-test.log` - backend test execution log
-          - `security/go-dependencies.txt` - Go dependency inventory
-          - `security/govulncheck-report.txt` - Go vulnerability check output
-          - `security/frontend-npm-audit.json` - frontend dependency audit output, if frontend exists
+          - \`sbom/sbom.spdx.json\` - repository SBOM in SPDX JSON format
+          - \`sbom/backend-cyclonedx.json\` - Go backend SBOM in CycloneDX format, if generated successfully
+          - \`tests/go-test.log\` - backend test execution log
+          - \`security/go-dependencies.txt\` - Go dependency inventory
+          - \`security/govulncheck-report.txt\` - Go vulnerability check output
+          - \`security/frontend-npm-audit.json\` - frontend dependency audit output, if frontend exists
 
           ## Purpose
 
-          These files support auditability, dependency traceability, security review and CI/CD evidence collection.
+          These files support auditability, dependency traceability, security review, provenance and CI/CD evidence collection.
+
+          ## Provenance
+
+          Selected evidence files are attested using GitHub Artifact Attestations. The attestations bind the generated evidence to this repository, commit and workflow run.
           EOF
+
+      - name: Generate provenance attestation for evidence manifest
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@v4
+        with:
+          subject-path: evidence/evidence-manifest.md
+
+      - name: Generate provenance attestation for repository SBOM
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@v4
+        with:
+          subject-path: evidence/sbom/sbom.spdx.json
+
+      - name: Generate provenance attestation for backend CycloneDX SBOM
+        if: github.event_name != 'pull_request' && hashFiles('evidence/sbom/backend-cyclonedx.json') != ''
+        uses: actions/attest@v4
+        with:
+          subject-path: evidence/sbom/backend-cyclonedx.json
 
       - name: Upload evidence artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: evidence-plane-artifacts
+          name: evidence-plane-artifacts-${{ github.sha }}
           path: evidence/
-          retention-days: 30
+          retention-days: 90
