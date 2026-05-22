@@ -30,11 +30,11 @@ func FuzzImageDecode(f *testing.F) {
 	})
 }
 
-// FuzzOCRClient verifies that the Go OCR sandbox client handles arbitrary image
+// FuzzOCRProcessing verifies that the Go OCR sandbox client handles arbitrary image
 // bytes without panicking. The real OCR engine runs in the isolated ocr-sandbox
 // container, so this fuzz test uses a local HTTP test server instead of calling
 // Tesseract directly.
-func FuzzOCRClient(f *testing.F) {
+func FuzzOCRProcessing(f *testing.F) {
 	f.Add([]byte{0xFF, 0xD8, 0xFF, 0xE0}, "jpeg")
 	f.Add([]byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}, "png")
 	f.Add([]byte("not an image"), "jpeg")
