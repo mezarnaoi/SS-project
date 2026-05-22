@@ -10,8 +10,9 @@ import (
 	_ "image/png"
 	"time"
 
+	"mqtt-streaming-server/ocr"
+
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/otiai10/gosseract/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"mqtt-streaming-server/domain"
@@ -26,10 +27,10 @@ const (
 type BrokerHandler struct {
 	photoRepository  domain.PhotoRepository
 	deviceRepository domain.DeviceRepository
-	ocrClient        *gosseract.Client
+	ocrClient        *ocr.Client
 }
 
-func NewBrokerHandler(db *mongo.Database, ocrClient *gosseract.Client) BrokerHandler {
+func NewBrokerHandler(db *mongo.Database, ocrClient *ocr.Client) BrokerHandler {
 	return BrokerHandler{
 		photoRepository:  repository.NewPhotoRepository(db),
 		deviceRepository: repository.NewDeviceRepository(db),
@@ -82,7 +83,7 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 
 	processingStart := time.Now()
 
-	text, confidence, err := b.extractTextFromImage(body)
+	text, confidence, err := b.extractTextFromImage(ctx, body, imageType)
 	if err != nil {
 		fmt.Printf("Failed to extract text from image: %v\n", err)
 		text = "OCR failed"
@@ -91,9 +92,14 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("OCR confidence: %.2f%%\n", confidence)
 
 	var medicalData *utils.MedicalData
+	var parserFailed bool
+
 	if utils.IsMedicalCertificate(text) {
-		medicalData = utils.ParseMedicalCertificate(text)
-		if medicalData != nil {
+		medicalData, err = safeParseMedicalCertificate(text)
+		if err != nil {
+			parserFailed = true
+			fmt.Printf("Failed to parse medical certificate: %v\n", err)
+		} else if medicalData != nil {
 			fmt.Printf("Extracted medical data: %+v\n", medicalData)
 		}
 	}
@@ -116,8 +122,20 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 		photo.NeedsReview = true
 		photo.ReviewReason = fmt.Sprintf(
 			"OCR confidence %.1f%% is below the %.0f%% threshold; extracted fields require human verification",
-			confidence, ocrConfidenceThreshold,
+			confidence,
+			ocrConfidenceThreshold,
 		)
+	}
+
+	if parserFailed {
+		photo.NeedsReview = true
+		if photo.ReviewReason != "" {
+			photo.ReviewReason += "; "
+		}
+		photo.ReviewReason += "medical certificate parser could not safely extract all fields; manual verification required"
+	}
+
+	if photo.NeedsReview {
 		fmt.Printf("Photo flagged for review: %s\n", photo.ReviewReason)
 	}
 
@@ -166,32 +184,28 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 }
 
 // returns the OCR text and the average Tesseract word
-func (b BrokerHandler) extractTextFromImage(imageData []byte) (string, float64, error) {
-	b.ocrClient.SetImageFromBytes(imageData) // #nosec G104 -- error handled implicitly by Text()
+func (b BrokerHandler) extractTextFromImage(ctx context.Context, imageData []byte, imageType string) (string, float64, error) {
+	ocrCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
+	defer cancel()
 
-	text, err := b.ocrClient.Text()
+	text, confidence, err := b.ocrClient.ExtractText(ocrCtx, imageData, imageType)
 	if err != nil {
-		return "", 0, fmt.Errorf("failed to extract text from image: %v", err)
+		return "", 0, fmt.Errorf("failed to extract text using OCR sandbox: %w", err)
 	}
 
-	boxes, err := b.ocrClient.GetBoundingBoxes(gosseract.RIL_WORD)
-	if err != nil || len(boxes) == 0 {
-		// OCR unavailable
-		return text, 0, nil
-	}
+	return text, confidence, nil
+}
 
-	var total float64
-	count := 0
-	for _, box := range boxes {
-		if box.Confidence > 0 {
-			total += float64(box.Confidence)
-			count++
+func safeParseMedicalCertificate(text string) (medicalData *utils.MedicalData, parseErr error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			medicalData = nil
+			parseErr = fmt.Errorf("medical certificate parser panic: %v", recovered)
 		}
-	}
-	if count == 0 {
-		return text, 0, nil
-	}
-	return text, total / float64(count), nil
+	}()
+
+	medicalData = utils.ParseMedicalCertificate(text)
+	return medicalData, nil
 }
 
 func (b BrokerHandler) RegisterDevice(_ mqtt.Client, msg mqtt.Message) {
