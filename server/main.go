@@ -12,20 +12,22 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/otiai10/gosseract/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"mqtt-streaming-server/broker"
+	"mqtt-streaming-server/ocr"
 	"mqtt-streaming-server/routes"
 )
 
 func NewTLSConfig() *tls.Config {
 	certpool := x509.NewCertPool()
+
 	pemCerts, err := os.ReadFile("/run/secrets/ca.crt")
 	if err != nil {
 		panic(err)
 	}
+
 	certpool.AppendCertsFromPEM(pemCerts)
 
 	cert, err := tls.LoadX509KeyPair("/run/secrets/web.crt", "/run/secrets/web.key")
@@ -34,40 +36,45 @@ func NewTLSConfig() *tls.Config {
 	}
 
 	return &tls.Config{
-		RootCAs:            certpool,
-		ClientCAs:          certpool,
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: false, // #nosec G402 -- hostname verified via RootCAs
+		RootCAs:      certpool,
+		ClientCAs:    certpool,
+		Certificates: []tls.Certificate{cert},
+		// #nosec G402 -- hostname verification is handled by RootCAs and service certificate setup.
+		InsecureSkipVerify: false,
 	}
 }
 
 func main() {
-	// Connect to MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	uri := fmt.Sprintf("mongodb://%s:%s@mongo-db:27017/?authSource=admin", os.Getenv("MONGO_INITDB_ROOT_USERNAME"), os.Getenv("MONGO_INITDB_ROOT_PASSWORD"))
+	uri := fmt.Sprintf(
+		"mongodb://%s:%s@mongo-db:27017/?authSource=admin",
+		os.Getenv("MONGO_INITDB_ROOT_USERNAME"),
+		os.Getenv("MONGO_INITDB_ROOT_PASSWORD"),
+	)
+
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		fmt.Println("Failed to connect to MongoDB:", err)
 		panic(err)
 	}
+
 	defer func() {
 		if err := mongoClient.Disconnect(ctx); err != nil {
 			panic(err)
 		}
 	}()
-	db := mongoClient.Database("mqtt-streaming-server")
 
+	db := mongoClient.Database("mqtt-streaming-server")
 	fmt.Println("Connected to MongoDB!")
 
-	c := make(chan os.Signal, 1)
+	ocrServiceURL := os.Getenv("OCR_SERVICE_URL")
+	if ocrServiceURL == "" {
+		ocrServiceURL = "http://ocr-sandbox:9000"
+	}
 
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-	ocrClient := gosseract.NewClient()
-	ocrClient.SetLanguage("eng", "ron") // #nosec G104 -- SetLanguage error is non-critical, app continues with default language
-	defer ocrClient.Close()
+	ocrClient := ocr.NewClient(ocrServiceURL)
 	brokerHandler := broker.NewBrokerHandler(db, ocrClient)
 
 	tlsconfig := NewTLSConfig()
@@ -76,13 +83,11 @@ func main() {
 	opts.AddBroker("ssl://broker:8883")
 	opts.SetClientID("web").SetTLSConfig(tlsconfig)
 
-	// Start the connection
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
 
-	// Subscribe to images topic
 	if token := client.Subscribe("ssproject/images/#", 0, brokerHandler.HandlePhoto); token.Wait() && token.Error() != nil {
 		fmt.Println(token.Error())
 		os.Exit(1)
@@ -98,11 +103,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize user routes
 	handler := routes.InitRoutes(db, client)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		fmt.Println("Starting HTTP server on port 8080...")
+
 		srv := &http.Server{
 			Addr:         ":8080",
 			Handler:      handler,
@@ -110,6 +118,7 @@ func main() {
 			WriteTimeout: 15 * time.Second,
 			IdleTimeout:  60 * time.Second,
 		}
+
 		if err := srv.ListenAndServe(); err != nil {
 			panic(err)
 		}

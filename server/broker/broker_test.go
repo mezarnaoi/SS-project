@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/otiai10/gosseract/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"mqtt-streaming-server/broker"
+	"mqtt-streaming-server/ocr"
 )
 
 func TestBrokerHandler_RegisterDevice(t *testing.T) {
@@ -15,7 +15,7 @@ func TestBrokerHandler_RegisterDevice(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for receiver constructor.
 		db        *mongo.Database
-		ocrClient *gosseract.Client
+		ocrClient *ocr.Client
 		// Named input parameters for target function.
 		msg mqtt.Message
 	}{
