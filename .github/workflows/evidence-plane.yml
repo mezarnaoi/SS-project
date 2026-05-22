@@ -54,11 +54,15 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      - name: Run Go vulnerability check
+      - name: Run Go vulnerability check and save evidence
         working-directory: server
-        continue-on-error: true
         run: |
+          set +e
           govulncheck ./... 2>&1 | tee ../evidence/security/govulncheck-report.txt
+          GOVULNCHECK_EXIT_CODE=${PIPESTATUS[0]}
+          echo "govulncheck_exit_code=${GOVULNCHECK_EXIT_CODE}" >> ../evidence/security/govulncheck-status.txt
+          echo "govulncheck completed with exit code ${GOVULNCHECK_EXIT_CODE}. Findings are recorded as evidence and do not fail the evidence workflow."
+          exit 0
 
       - name: Set up Node.js
         if: hashFiles('client/package.json') != ''
