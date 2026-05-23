@@ -27,7 +27,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ authRequired, requiredP
   }
 
   if (authRequired && requiredPage && !hasPageAccess(requiredPage)) {
-    return <Navigate to="/reports" replace />;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="max-w-md rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <h2 className="text-lg font-semibold mb-1">Unauthorized</h2>
+          <p className="text-sm">You do not have permission to access this page.</p>
+        </div>
+      </div>
+    );
   }
 
   return <Outlet />;

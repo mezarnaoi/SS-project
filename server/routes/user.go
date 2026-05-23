@@ -31,6 +31,9 @@ func InitUserRoutes(db *mongo.Database, mux *http.ServeMux) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	if err := rawRepo.EnsureIndexes(ctx); err != nil {
+		fmt.Printf("Warning: failed to ensure user indexes: %v\n", err)
+	}
 	if err := rawRepo.EnsureDefaultAdmin(ctx); err != nil {
 		fmt.Printf("Warning: failed to ensure default admin user: %v\n", err)
 	}
@@ -322,6 +325,15 @@ func (ctlr UserController) UserByID(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPatch:
+		if _, err := ctlr.RawUserRepository.FindByID(r.Context(), id); err != nil {
+			if err == mongo.ErrNoDocuments {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Failed to fetch user", http.StatusInternalServerError)
+			return
+		}
+
 		var req userMutationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -356,6 +368,10 @@ func (ctlr UserController) UserByID(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := ctlr.RawUserRepository.UpdateByID(r.Context(), id, setFields); err != nil {
+			if err == mongo.ErrNoDocuments {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
 			http.Error(w, "Failed to update user", http.StatusInternalServerError)
 			return
 		}
@@ -375,6 +391,10 @@ func (ctlr UserController) UserByID(w http.ResponseWriter, r *http.Request) {
 		}) // #nosec G104
 	case http.MethodDelete:
 		if err := ctlr.RawUserRepository.DeleteByID(r.Context(), id); err != nil {
+			if err == mongo.ErrNoDocuments {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
 			http.Error(w, "Failed to delete user", http.StatusInternalServerError)
 			return
 		}
