@@ -36,12 +36,26 @@ func (repo *UserRepository) Save(ctx context.Context, email, password string) er
 
 func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	collection := repo.db.Collection("users")
-	var user domain.User
-	err := collection.FindOne(ctx, bson.M{"email": strings.ToLower(email)}).Decode(&user)
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query users: %w", err)
 	}
-	return &user, nil
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var user domain.User
+		if decodeErr := cursor.Decode(&user); decodeErr != nil {
+			return nil, decodeErr
+		}
+		if strings.EqualFold(strings.TrimSpace(user.Email), normalizedEmail) {
+			return &user, nil
+		}
+	}
+	if cursorErr := cursor.Err(); cursorErr != nil {
+		return nil, cursorErr
+	}
+	return nil, mongo.ErrNoDocuments
 }
 
 func (repo *UserRepository) EnsureDefaultAdmin(ctx context.Context) error {

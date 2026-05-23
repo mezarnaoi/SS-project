@@ -165,11 +165,10 @@ type userMutationRequest struct {
 }
 
 type userResponse struct {
-	ID       string   `json:"id"`
-	Email    string   `json:"email"`
-	Password string   `json:"password,omitempty"`
-	Role     string   `json:"role"`
-	Pages    []string `json:"pages"`
+	ID    string   `json:"id"`
+	Email string   `json:"email"`
+	Role  string   `json:"role"`
+	Pages []string `json:"pages"`
 }
 
 func validRole(role string) bool {
@@ -228,11 +227,10 @@ func (ctlr UserController) UsersCollection(w http.ResponseWriter, r *http.Reques
 				pages = []string{"all"}
 			}
 			response = append(response, userResponse{
-				ID:       user.ID.Hex(),
-				Email:    user.Email,
-				Password: "******",
-				Role:     user.Role,
-				Pages:    pages,
+				ID:    user.ID.Hex(),
+				Email: user.Email,
+				Role:  user.Role,
+				Pages: pages,
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
