@@ -76,7 +76,17 @@ func (ctlr DeviceController) GetDevices(w http.ResponseWriter, r *http.Request) 
 	}
 
 	role, _ := r.Context().Value("role").(string)
-	if role != "admin" {
+	pages, _ := r.Context().Value("pages").([]string)
+	canAccess := role == "admin"
+	if !canAccess {
+		for _, page := range pages {
+			if page == "devices" {
+				canAccess = true
+				break
+			}
+		}
+	}
+	if !canAccess {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
