@@ -146,6 +146,9 @@ func (repo *reportRepository) GetExpirationAlerts(ctx context.Context, daysAhead
 		if err := cursor.Decode(&p); err != nil {
 			return nil, err
 		}
+		if err := DecryptPhotoFields(&p); err != nil {
+			return nil, err
+		}
 		daysUntil := int(p.DataUrmExaminari.Sub(now).Hours() / 24)
 		alerts = append(alerts, domain.ExpirationAlert{
 			LastName:        p.Nume,
@@ -184,6 +187,9 @@ func (repo *reportRepository) GetAnonymizedRecords(ctx context.Context, start, e
 	for cursor.Next(ctx) {
 		var p domain.Photo
 		if err := cursor.Decode(&p); err != nil {
+			return nil, err
+		}
+		if err := DecryptPhotoFields(&p); err != nil {
 			return nil, err
 		}
 		records = append(records, domain.AnonymizedRecord{

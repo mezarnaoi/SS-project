@@ -66,6 +66,14 @@ echo "Verifying certificates..."
 openssl verify -CAfile ca.crt server.crt
 openssl verify -CAfile ca.crt web.crt
 
+# 4. DB PHI encryption key (AES-256, 32 random bytes, base64-encoded)
+if [ ! -f db_encryption.key ]; then
+    echo "[4/4] Generating database PHI encryption key..."
+    openssl rand -base64 32 > db_encryption.key
+else
+    echo "[4/4] db_encryption.key already exists, skipping."
+fi
+
 # Private keys: readable only by owner
 chmod 600 ./*.key
 chmod 644 ./*.crt
