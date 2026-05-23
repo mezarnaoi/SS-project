@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,6 +15,12 @@ import (
 
 	"mqtt-streaming-server/domain"
 )
+
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+var allowedUserFields = map[string]bool{
+	"email": true, "password": true, "role": true, "pages": true,
+}
 
 type UserRepository struct {
 	db *mongo.Database
@@ -45,8 +52,11 @@ func (repo *UserRepository) Save(ctx context.Context, email, password string) er
 }
 
 func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
-	collection := repo.db.Collection("users")
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	if !emailRegex.MatchString(normalizedEmail) {
+		return nil, fmt.Errorf("invalid email format")
+	}
+	collection := repo.db.Collection("users")
 	var user domain.User
 	err := collection.FindOne(ctx, bson.M{"email": normalizedEmail}).Decode(&user)
 	if err != nil {
@@ -139,6 +149,11 @@ func (repo *UserRepository) UpdateByID(ctx context.Context, id string, setFields
 
 	if len(setFields) == 0 {
 		return nil
+	}
+	for key := range setFields {
+		if !allowedUserFields[key] {
+			return fmt.Errorf("unknown field: %s", key)
+		}
 	}
 
 	result, err := collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.M{"$set": setFields})
