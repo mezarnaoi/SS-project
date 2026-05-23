@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -56,7 +57,8 @@ func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (*dom
 
 func (repo *UserRepository) EnsureDefaultAdmin(ctx context.Context) error {
 	collection := repo.db.Collection("users")
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123"), bcrypt.DefaultCost)
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}

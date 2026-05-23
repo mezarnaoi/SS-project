@@ -11,11 +11,12 @@ ENV_FILE="$SCRIPT_DIR/../.env"
 DETECTED_IP=$(hostname -I | awk '{print $1}')
 
 cat > "$ENV_FILE" << EOF
-UID=$(id -u)                               # User ID local 
-GID=$(id -g)                                # Group ID local 
+UID=$(id -u)
+GID=$(id -g)
 MONGO_INITDB_ROOT_USERNAME=admin      # Username MongoDB
-MONGO_INITDB_ROOT_PASSWORD=changeit # ${MONGO_PASSWORD} # Parolă MongoDB
+MONGO_INITDB_ROOT_PASSWORD=changeit # Parolă MongoDB
 JWT_SECRET=dev-secret                 # Secret pentru JWT
+ADMIN_PASSWORD=changeit
 AWS_ACCESS_KEY=local-aws-access       # Opțional: pentru S3
 AWS_SECRET_KEY=local-aws-secret       # Opțional: pentru S3
 AWS_REGION=us-east-1                  # Opțional: pentru S3

@@ -78,8 +78,23 @@ db.photos.find() # fields should be encrypted, in case OCR succeeded
 ## Starting the project
 
 ```
-./start.sh # Enter the mongoDB password
+./start.sh
 ```
+
+## Default credentials - change these before sharing or deploying
+
+The defaults below are fine for local dev, but should never be used in production.
+They live in `.env` (gitignored), generated automatically by `start.sh`.
+
+| Variable | Default |
+|---|---|
+| `MONGO_INITDB_ROOT_PASSWORD` | `changeit` |
+| `JWT_SECRET` | `dev-secret` |
+| `ADMIN_PASSWORD` | `changeit` |
+
+To change any of them, open `.env`, update the value, then restart the affected service:
+
+The frontend admin account is `admin@test.com` with the password set by `ADMIN_PASSWORD`.
 
 ## PHI Fields
 * text

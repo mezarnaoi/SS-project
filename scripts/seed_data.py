@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KEY_FILE = os.path.join(SCRIPT_DIR, "..", "secrets", "db_encryption.key")
 
-MONGO_URI = "mongodb://admin:123456@localhost:27019/"
+MONGO_URI = "mongodb://admin:changeit@localhost:27019/"
 DB_NAME = "mqtt-streaming-server"
 COLLECTION_NAME = "photos"
 

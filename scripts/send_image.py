@@ -4,6 +4,7 @@ import os
 import socket
 import json
 import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
 import sys
 import io
 from PIL import Image, ImageDraw
@@ -70,7 +71,8 @@ def load_image_from_file(path):
         print(f"Error loading image {path}: {e}")
         sys.exit(1)
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, connect_flags, reason_code, properties):
+    rc = reason_code.value
     if rc == 0:
         print("Connected to MQTT Broker!")
         
@@ -105,7 +107,7 @@ def on_connect(client, userdata, flags, rc):
         print(f"Failed to connect, return code {rc}")
         sys.exit(1)
 
-def on_publish(client, userdata, mid):
+def on_publish(client, userdata, mid, reason_code, properties):
     # Disconnect after second publish (the photo)
     # Note: connect sends no message, register is mid=1, photo is mid=2
     if mid == 2:
@@ -116,19 +118,25 @@ def on_publish(client, userdata, mid):
         sys.exit(0)
 
 # Create MQTT client
-client = mqtt.Client(client_id=DEVICE_ID)
+# client = mqtt.Client(client_id=DEVICE_ID)
+client = mqtt.Client(CallbackAPIVersion.VERSION2, client_id=DEVICE_ID)
 client.on_connect = on_connect
 client.on_publish = on_publish
 
 # TLS configuration for mTLS
-client.tls_set(
-    ca_certs=CA_CRT,
-    certfile=CLIENT_CRT,
-    keyfile=CLIENT_KEY,
-    tls_version=ssl.PROTOCOL_TLSv1_2
-)
-# TLS
-client.tls_insecure_set(False)
+ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_REQUIRED
+ssl_context.load_verify_locations(CA_CRT)
+ssl_context.load_cert_chain(certfile=CLIENT_CRT, keyfile=CLIENT_KEY)
+client.tls_set_context(ssl_context)
+# client.tls_set(
+#     ca_certs=CA_CRT,
+#     certfile=CLIENT_CRT,
+#     keyfile=CLIENT_KEY,
+#     tls_version=ssl.PROTOCOL_TLSv1_2
+# )
+# client.tls_insecure_set(False)
 
 print(f"Device ID: {DEVICE_ID}")
 print(f"Connecting to {BROKER}:{PORT}...")
