@@ -44,6 +44,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.app.Activity
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+
 
 data class UploadItem(
     val fileName: String,
@@ -72,6 +76,8 @@ fun MedicalOcrClientScreen() {
 
     var currentCameraUri by remember { mutableStateOf<Uri?>(null) }
     var currentCameraFile by remember { mutableStateOf<File?>(null) }
+
+    var remoteCaptureCounter by remember { mutableStateOf(0) }
 
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
@@ -135,6 +141,57 @@ fun MedicalOcrClientScreen() {
             }
         }
     }
+
+    LaunchedEffect(remoteCaptureCounter) {
+        if (remoteCaptureCounter > 0) {
+            Toast.makeText(
+                context,
+                "Remote capture command received",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+
+    DisposableEffect(Unit) {
+        val activity = context as Activity
+
+        val commandListener = MqttCommandListener(
+            context = context,
+            onCaptureCommand = {
+                activity.runOnUiThread {
+                    remoteCaptureCounter++
+                }
+            },
+            onStartLiveCommand = {
+                activity.runOnUiThread {
+                    Toast.makeText(context, "Start live not implemented yet", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onStopLiveCommand = {
+                activity.runOnUiThread {
+                    Toast.makeText(context, "Stop live not implemented yet", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+
+        try {
+            commandListener.connectAndSubscribe()
+            Toast.makeText(context, "Listening for MQTT commands", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Could not connect command listener: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+
+        onDispose {
+            commandListener.disconnect()
+        }
+    }
+
+
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize()

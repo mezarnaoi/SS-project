@@ -73,7 +73,8 @@ object MqttUploader {
         }
     }
 
-    private fun createSocketFactory(context: Context): SSLSocketFactory {
+    fun createSocketFactory(context: Context): SSLSocketFactory {
+
         val certificateFactory = CertificateFactory.getInstance("X.509")
 
         val caCertificate = context.resources.openRawResource(R.raw.ca).use { input ->
