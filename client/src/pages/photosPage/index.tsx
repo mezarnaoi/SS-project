@@ -237,7 +237,7 @@ const PhotosPage: React.FC = () => {
     }
   };
 
-  const sendCommand = async (command: 'CAPTURE' | 'START-LIVE' | 'STOP-LIVE') => {
+  const sendCommand = async (command: 'CAPTURE') => {
     // Determine device ID
     // If a specific device is selected, use it. Otherwise, default to "camera_stream" (the unknown device default)
     const targetDeviceId = selectedDevice !== 'all' ? selectedDevice : 'camera_stream';
@@ -367,9 +367,9 @@ const PhotosPage: React.FC = () => {
           {/* Separator */}
           <div className="w-px h-10 bg-gray-300 mx-2 hidden md:block"></div>
 
-          {/* ESP Camera Controls */}
+          {/* Mobile device controls */}
           <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-md border border-gray-200">
-            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">ESP Camera:</span>
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Mobile device:</span>
 
             <div className="flex gap-2">
               <button
@@ -379,20 +379,7 @@ const PhotosPage: React.FC = () => {
               >
                 Capture
               </button>
-              <button
-                onClick={() => sendCommand('START-LIVE')}
-                disabled={commandLoading}
-                className="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
-              >
-                Start Live
-              </button>
-              <button
-                onClick={() => sendCommand('STOP-LIVE')}
-                disabled={commandLoading}
-                className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors disabled:opacity-50"
-              >
-                Stop Live
-              </button>
+              
             </div>
           </div>
 
