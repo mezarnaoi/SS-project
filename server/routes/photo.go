@@ -26,10 +26,10 @@ func InitPhotoRoutes(db *mongo.Database, mux *http.ServeMux) {
 		PhotoRepository: repository.NewPhotoRepository(db),
 	}
 
-	mux.Handle("/photos", withAuth(http.HandlerFunc(photoController.GetPhotos)))
-	mux.Handle("/photos/all", withAuth(http.HandlerFunc(photoController.DeleteAllPhotos)))
-	mux.Handle("/photos/review/", withAuth(http.HandlerFunc(photoController.ApproveReview)))
-	mux.Handle("/photos/", withAuth(http.HandlerFunc(photoController.DeletePhoto)))
+	mux.Handle("/photos", withAuth(withAnyPage(http.HandlerFunc(photoController.GetPhotos), "photos", "statistics")))
+	mux.Handle("/photos/all", withAuth(withAdminOnly(http.HandlerFunc(photoController.DeleteAllPhotos))))
+	mux.Handle("/photos/review/", withAuth(withAdminOnly(http.HandlerFunc(photoController.ApproveReview))))
+	mux.Handle("/photos/", withAuth(withAdminOnly(http.HandlerFunc(photoController.DeletePhoto))))
 }
 
 func (ctlr PhotoController) GetPhotos(w http.ResponseWriter, r *http.Request) {
@@ -107,8 +107,6 @@ func (ctlr PhotoController) DeletePhoto(w http.ResponseWriter, r *http.Request) 
 
 	ctx := r.Context()
 
-
-
 	// Extract photo ID from URL path: /photos/{id}
 	path := strings.TrimPrefix(r.URL.Path, "/photos/")
 	if path == "" {
@@ -175,8 +173,6 @@ func (ctlr PhotoController) DeleteAllPhotos(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-
-
 
 	// Delete all photos from database
 	deletedCount, err := ctlr.PhotoRepository.DeleteAll(ctx)

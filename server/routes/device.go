@@ -24,9 +24,9 @@ func InitDeviceRoutes(db *mongo.Database, mqttClient mqtt.Client, mux *http.Serv
 	}
 
 	// TODO: Implement authentication - See docs/AUTH_IMPLEMENTATION.md
-	mux.Handle("/devices", withAuth(http.HandlerFunc(deviceController.GetDevices)))
-	mux.Handle("/devices/switch", withAuth(http.HandlerFunc(deviceController.SwitchDeviceMode)))
-	mux.Handle("/devices/command", withAuth(http.HandlerFunc(deviceController.SendCommand)))
+	mux.Handle("/devices", withAuth(withAnyPage(http.HandlerFunc(deviceController.GetDevices), "devices")))
+	mux.Handle("/devices/switch", withAuth(withAdminOnly(http.HandlerFunc(deviceController.SwitchDeviceMode))))
+	mux.Handle("/devices/command", withAuth(withAnyPage(http.HandlerFunc(deviceController.SendCommand), "devices")))
 }
 
 func (ctlr DeviceController) SwitchDeviceMode(w http.ResponseWriter, r *http.Request) {
@@ -36,11 +36,20 @@ func (ctlr DeviceController) SwitchDeviceMode(w http.ResponseWriter, r *http.Req
 	}
 
 	role, _ := r.Context().Value("role").(string)
-	if role != "admin" {
-	    http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	    return
+	pages, _ := r.Context().Value("pages").([]string)
+	canAccess := role == "admin"
+	if !canAccess {
+		for _, page := range pages {
+			if page == "devices" {
+				canAccess = true
+				break
+			}
+		}
 	}
-
+	if !canAccess {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var device struct {
 		ID   string `json:"id"`
@@ -68,13 +77,11 @@ func (ctlr DeviceController) GetDevices(w http.ResponseWriter, r *http.Request) 
 
 	role, _ := r.Context().Value("role").(string)
 	if role != "admin" {
-	    http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	    return
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
 	ctx := r.Context()
-
-
 
 	// Fetch devices from the database
 	devices, err := ctlr.DeviceRepository.GetAllDevices(ctx)
@@ -92,7 +99,6 @@ func (ctlr DeviceController) SendCommand(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 
 	var request struct {
 		DeviceID string `json:"device_id"`

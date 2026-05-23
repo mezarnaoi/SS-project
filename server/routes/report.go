@@ -21,10 +21,10 @@ func InitReportRoutes(db *mongo.Database, mux *http.ServeMux) {
 		ReportRepository: repository.NewReportRepository(db),
 	}
 
-	mux.Handle("/reports/summary", withAuth(http.HandlerFunc(ctrl.GetSummary)))
-	mux.Handle("/reports/expiring", withAuth(http.HandlerFunc(ctrl.GetExpirationAlerts)))
-	mux.Handle("/reports/anonymized", withAuth(http.HandlerFunc(ctrl.GetAnonymizedRecords)))
-	mux.Handle("/reports/performance", withAuth(http.HandlerFunc(ctrl.GetPerformanceMetrics)))
+	mux.Handle("/reports/summary", withAuth(withAnyPage(http.HandlerFunc(ctrl.GetSummary), "reports")))
+	mux.Handle("/reports/expiring", withAuth(withAnyPage(http.HandlerFunc(ctrl.GetExpirationAlerts), "reports")))
+	mux.Handle("/reports/anonymized", withAuth(withAnyPage(http.HandlerFunc(ctrl.GetAnonymizedRecords), "reports")))
+	mux.Handle("/reports/performance", withAuth(withAnyPage(http.HandlerFunc(ctrl.GetPerformanceMetrics), "reports")))
 }
 
 func (c *ReportController) GetSummary(w http.ResponseWriter, r *http.Request) {

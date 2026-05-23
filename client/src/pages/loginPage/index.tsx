@@ -49,6 +49,24 @@ const LoginPage: React.FC = () => {
     <div className="flex justify-center items-center min-h-[80vh]">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <h2 className="text-2xl font-semibold text-sky-700 mb-6 text-center">Login</h2>
+
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-300 text-amber-800 rounded-md">
+          <p className="text-sm font-medium mb-2">Temporary admin credentials (remove after testing):</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+            <input
+              type="text"
+              readOnly
+              value="admin@test.com"
+              className="px-2 py-1 border border-amber-200 rounded bg-white text-gray-800"
+            />
+            <input
+              type="text"
+              readOnly
+              value="123"
+              className="px-2 py-1 border border-amber-200 rounded bg-white text-gray-800"
+            />
+          </div>
+        </div>
         
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-md">
