@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-const dbKeySecretsPath = "/run/secrets/db_encryption.key"
+const dbKeySecretsPath = "/run/secrets/db_encryption.key" // #nosec G101 -- file path, not a credential
 
 func getEncryptionKey() ([]byte, error) {
 	if raw, err := os.ReadFile(dbKeySecretsPath); err == nil {
