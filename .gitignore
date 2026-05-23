@@ -40,3 +40,18 @@ coverage/
 
 # Local evidence artifacts generated during testing
 evidence/
+
+# Android client local TLS material
+android-client/app/src/main/res/raw/android_client.p12
+android-client/app/src/main/res/raw/*.p12
+android-client/app/src/main/res/raw/*.key
+
+# Optional: local generated CA copied for emulator/demo
+# ca.crt is public, but it is environment-specific, so usually keep it local too.
+android-client/app/src/main/res/raw/ca.crt
+
+# Android build outputs
+android-client/.gradle/
+android-client/build/
+android-client/app/build/
+android-client/local.properties
