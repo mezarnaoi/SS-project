@@ -55,21 +55,41 @@ async def extract_text(file: UploadFile = File(...)) -> dict[str, Any]:
 
     try:
         text = pytesseract.image_to_string(image, lang="eng+ron")
+        clean_text = text.strip()
+
+        if len(clean_text) == 0:
+            return {
+                "text": "",
+                "confidence": 0.0,
+                "recognized_word_count": 0,
+                "engine": "tesseract",
+            }
 
         ocr_data = pytesseract.image_to_data(
-            image,
-            lang="eng+ron",
-            output_type=pytesseract.Output.DICT,
+        image,
+        lang="eng+ron",
+        output_type=pytesseract.Output.DICT,
         )
 
         confidences: list[float] = []
-        for raw_confidence in ocr_data.get("conf", []):
+        recognized_words: list[str] = []
+
+        texts = ocr_data.get("text", [])
+        raw_confidences = ocr_data.get("conf", [])
+
+        for raw_text, raw_confidence in zip(texts, raw_confidences):
+            word = str(raw_text).strip()
+
+            if not word:
+                continue
+
             try:
                 confidence = float(raw_confidence)
             except (TypeError, ValueError):
                 continue
 
             if confidence >= 0:
+                recognized_words.append(word)
                 confidences.append(confidence)
 
         average_confidence = (
@@ -79,10 +99,12 @@ async def extract_text(file: UploadFile = File(...)) -> dict[str, Any]:
         )
 
         return {
-            "text": text.strip(),
+            "text": clean_text,
             "confidence": round(average_confidence, 2),
+            "recognized_word_count": len(recognized_words),
             "engine": "tesseract",
         }
+
 
     except pytesseract.TesseractError as exc:
         raise HTTPException(status_code=500, detail="OCR engine failed.") from exc
