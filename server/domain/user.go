@@ -1,11 +1,17 @@
 package domain
 
-import "context"
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type User struct {
-	Email    string `json:"email" bson:"email"`
-	Password string `json:"password,omitempty" bson:"password"`
-	Role     string `json:"role,omitempty" bson:"role"`
+	ID       primitive.ObjectID `json:"-" bson:"_id,omitempty"`
+	Email    string             `json:"email" bson:"email"`
+	Password string             `json:"password,omitempty" bson:"password"`
+	Role     string             `json:"role,omitempty" bson:"role"`
+	Pages    []string           `json:"pages,omitempty" bson:"pages"`
 }
 
 type UserRepository interface {
