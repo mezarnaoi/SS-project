@@ -225,7 +225,7 @@ const ReportsPage: React.FC = () => {
           </div>
 
           {/* Aviz breakdown */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 text-gray-900">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-medium text-gray-800">Medical Opinion Breakdown</h2>
               <span className="text-xs text-gray-400">Only records where OCR parsed the aviz field</span>
@@ -240,12 +240,12 @@ const ReportsPage: React.FC = () => {
 
           {/* OCR rate */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 text-gray-900">
               <h2 className="text-lg font-medium text-gray-800 mb-2">OCR Auto-Processing Rate</h2>
               <p className="text-3xl font-bold text-sky-700">{summary.ocr_success_rate.toFixed(1)}%</p>
               <p className="text-sm text-gray-500 mt-1">Records processed without manual review needed</p>
             </div>
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 text-gray-900">
               <h2 className="text-lg font-medium text-gray-800 mb-2">Avg OCR Latency</h2>
               {summary.avg_processing_time_ms > 0 ? (
                 <>
@@ -263,7 +263,7 @@ const ReportsPage: React.FC = () => {
 
           {/* Expiring next month preview */}
           {summary.expiring_next_month.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 text-gray-900">
               <h2 className="text-lg font-medium text-gray-800 mb-4">Expiring Next Month ({summary.expiring_next_month.length})</h2>
               <table className="w-full text-sm text-left">
                 <thead className="text-gray-500 border-b">
@@ -298,7 +298,7 @@ const ReportsPage: React.FC = () => {
       {!loading && !error && activeTab === 'expiring' && (
         <div className="space-y-4">
           {/* Filter */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex items-end gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm flex items-end gap-4 text-gray-900">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Days ahead</label>
               <select
@@ -333,7 +333,7 @@ const ReportsPage: React.FC = () => {
               No medical certificates expiring in the next {daysAhead} days.
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden text-gray-900">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 border-b">
                   <tr>
@@ -377,7 +377,7 @@ const ReportsPage: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex flex-wrap items-end gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm flex flex-wrap items-end gap-4 text-gray-900">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
@@ -407,7 +407,7 @@ const ReportsPage: React.FC = () => {
           {anonymized.length === 0 ? (
             <div className="text-center text-gray-500 py-10">No records found for this period.</div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+            <div className="bg-white rounded-lg shadow-sm overflow-x-auto text-gray-900">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 border-b">
                   <tr>
@@ -459,7 +459,7 @@ const ReportsPage: React.FC = () => {
       {/* --- PERFORMANCE TAB --- */}
       {!loading && !error && activeTab === 'performance' && performance && (
         <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 space-y-6 text-gray-900">
             <h2 className="text-lg font-medium text-gray-800">System Performance Metrics</h2>
 
             <div>
@@ -497,7 +497,7 @@ const ReportsPage: React.FC = () => {
 
           {/* Processing latency */}
           {performance.avg_processing_time_ms > 0 && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 text-gray-900">
               <h2 className="text-lg font-medium text-gray-800 mb-4">Processing Latency (OCR + Parsing)</h2>
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-sky-50 border border-sky-100 rounded-lg p-4 text-center">
