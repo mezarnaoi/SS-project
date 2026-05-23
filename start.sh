@@ -1,11 +1,14 @@
 #!/bin/bash
 # Convenience wrapper for starting the development environment
 
-# Ensure the main script is executable
-#chmod +x scripts/dev-start.sh
-
-# Run the main start script
-#./scripts/dev-start.sh
-
+mkdir -p uploads
+./scripts/gen-env.sh
+./scripts/gen-db-key.sh
 ./scripts/gen-certs.sh
+
+docker compose up --build -d
+
+cd client
+yarn install
+yarn dev
 
