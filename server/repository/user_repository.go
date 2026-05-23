@@ -57,8 +57,11 @@ func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (*dom
 		return nil, fmt.Errorf("invalid email format")
 	}
 	collection := repo.db.Collection("users")
+	filter := struct {
+		Email string `bson:"email"`
+	}{Email: matched}
 	var user domain.User
-	err := collection.FindOne(ctx, bson.M{"email": matched}).Decode(&user)
+	err := collection.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
