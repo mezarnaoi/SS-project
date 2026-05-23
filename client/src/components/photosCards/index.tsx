@@ -9,7 +9,6 @@ interface PhotoCardProps {
   extractedText?: string;
   isAdmin?: boolean;
   onDelete?: (photoId: string) => Promise<void> | void;
-  // OCR confidence thresholding fields
   needsReview?: boolean;
   reviewReason?: string;
   ocrConfidence?: number;
@@ -74,6 +73,18 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
       console.error('Failed to mark as reviewed', err);
     } finally {
       setIsReviewing(false);
+    }
+  };
+
+  // Helper pentru a formata raw text în JSON pretty-print
+  const formatOCRText = (text: string) => {
+    if (!text) return '';
+    try {
+      const parsedObject = JSON.parse(text);
+      return JSON.stringify(parsedObject, null, 2);
+    } catch (error) {
+      // Fallback dacă textul nu este un JSON valid
+      return text;
     }
   };
 
@@ -187,14 +198,15 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
       {/* Zoom modal */}
       {isZoomed && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={handleModalClick}
         >
-          <div className="relative bg-white rounded-xl shadow-2xl max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="absolute top-0 right-0 left-0 bg-gradient-to-b from-black/50 to-transparent h-20 z-10 flex justify-between items-start p-4">
+          {/* Am adăugat flex flex-col pentru a face scrollbar-ul să funcționeze corect */}
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="absolute top-0 right-0 left-0 bg-gradient-to-b from-black/50 to-transparent h-20 z-10 flex justify-between items-start p-4 pointer-events-none">
               <div className="text-white text-lg font-medium truncate pr-10">{altText}</div>
               <button
-                className="bg-white/20 hover:bg-white/40 text-white rounded-full p-2 backdrop-blur-sm transition-all duration-200"
+                className="bg-white/20 hover:bg-white/40 text-white rounded-full p-2 backdrop-blur-sm transition-all duration-200 pointer-events-auto"
                 onClick={toggleZoom}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -210,24 +222,29 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
               </div>
             )}
 
-            <div className="p-4 pt-20">
+            {/* Containerul imaginii - înălțime fixată pentru a lăsa loc textului */}
+            <div className="p-4 pt-20 flex-shrink-0 flex justify-center bg-gray-50 border-b border-gray-100">
               <img
                 src={imageError ? fallbackImage : imageUrl}
                 alt={altText}
-                className="max-w-full max-h-[65vh] object-contain mx-auto rounded-md"
+                className="max-w-full max-h-[45vh] object-contain rounded-md"
               />
             </div>
 
+            {/* Containerul de text scrollabil unde aplicăm formatarea JSON */}
             {extractedText && (
-              <div className="bg-gray-50 p-6 border-t border-gray-100">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Extracted Text</h3>
-                <p className="text-gray-800 text-base">{extractedText}</p>
+              <div className="bg-white p-6 overflow-y-auto flex-1">
+                <h3 className="text-sm font-medium text-gray-500 mb-3">Extracted Data (JSON)</h3>
+                <pre className="text-gray-800 text-sm font-mono whitespace-pre-wrap break-words bg-gray-50 p-4 rounded-md border border-gray-200 shadow-inner">
+                  {formatOCRText(extractedText)}
+                </pre>
               </div>
             )}
 
             {reviewReason && (
-              <div className="bg-orange-50 px-6 pb-4 border-t border-orange-100">
-                <p className="text-xs text-orange-700 mt-2">{reviewReason}</p>
+              <div className="bg-orange-50 px-6 py-4 border-t border-orange-100 flex-shrink-0">
+                <p className="text-xs font-semibold text-orange-800">Review Reason</p>
+                <p className="text-sm text-orange-700 mt-1">{reviewReason}</p>
               </div>
             )}
           </div>
