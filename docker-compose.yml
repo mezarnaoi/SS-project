@@ -10,6 +10,8 @@ services:
       - MQTT_HOST_IP=${HOST_IP:-host.docker.internal}
       - MQTT_MAX_PAYLOAD_BYTES=5242880
       - OCR_SERVICE_URL=http://ocr-sandbox:9000
+      - MQTT_RATE_LIMIT_MESSAGES=5
+      - MQTT_RATE_LIMIT_WINDOW_SECONDS=30
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
