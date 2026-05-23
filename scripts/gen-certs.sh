@@ -37,6 +37,7 @@ subjectAltName = @alt_names
 DNS.1 = broker
 DNS.2 = localhost
 IP.1  = 127.0.0.1
+IP.2 = 10.0.2.2
 EOF
 
 openssl req -new -key server.key -out server.csr -config server_ext.cnf
