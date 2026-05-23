@@ -376,6 +376,41 @@ const ReportsPage: React.FC = () => {
             PHI fields (Name, CNP, Personal ID) are excluded from this dataset for research/compliance use.
           </div>
 
+          {/* Tabelul a fost mutat corect AICI, in interiorul tab-ului de date anonimizate */}
+          {anonymized.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-2 text-gray-900">
+              <h2 className="text-lg font-medium text-gray-800 mb-4">Fitness by Profession</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Object.entries(
+                  anonymized.reduce((acc, curr) => {
+                    const job = curr.job_title || 'Unknown';
+                    if (!acc[job]) acc[job] = { fit: 0, unfit: 0, total: 0 };
+                    acc[job].total += 1;
+                    if (curr.medical_opinion === 'APT') acc[job].fit += 1;
+                    else acc[job].unfit += 1;
+                    return acc;
+                  }, {} as Record<string, { fit: number; unfit: number; total: number }>)
+                )
+                  .sort(([, a], [, b]) => b.total - a.total)
+                  .map(([job, stats], idx) => (
+                    <div key={idx} className="border border-gray-100 rounded-md p-3 bg-gray-50">
+                      <p className="font-semibold text-gray-700 truncate" title={job}>{job}</p>
+                      <div className="flex justify-between mt-2 text-sm">
+                        <span className="text-green-600 font-medium">{stats.fit} Fit</span>
+                        <span className="text-red-500">{stats.unfit} Other</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                        <div 
+                          className="bg-green-500 h-1.5 rounded-full" 
+                          style={{ width: `${(stats.fit / stats.total) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
           {/* Filters */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex flex-wrap items-end gap-4 text-gray-900">
             <div>
