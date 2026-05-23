@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Generates CA, broker server, and client certificates for MQTT mTLS.
-# Output goes to secrets/ (gitignored). Run once before docker-compose up.
+# Generates CA, broker server, and client certificates for MQTT mTLS
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

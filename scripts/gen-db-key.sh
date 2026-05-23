@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Generates the AES-256 key used to encrypt PHI fields in MongoDB
-# Output: secrets/db_encryption.key (gitignored, mounted as /run/secrets/db_encryption.key)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
