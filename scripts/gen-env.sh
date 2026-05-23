@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Generates the .env file for docker-compose.
-# UID/GID are detected automatically; MongoDB password is prompted interactively.
+# Generates the .env file for docker-compose
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,4 +23,4 @@ S3_BUCKET_NAME=local-bucket           # Opțional: pentru S3
 MQTT_HOST_IP=${DETECTED_IP}             # IP-ul host-ului pentru MQTT
 EOF
 
-echo ".env generat: $ENV_FILE"
+echo ".env: $ENV_FILE"
