@@ -82,7 +82,7 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
     try {
       const parsedObject = JSON.parse(text);
       return JSON.stringify(parsedObject, null, 2);
-    } catch (error) {
+    } catch {
       // Fallback dacă textul nu este un JSON valid
       return text;
     }
