@@ -40,6 +40,10 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class UploadItem(
     val fileName: String,
@@ -63,6 +67,8 @@ class MainActivity : ComponentActivity() {
 fun MedicalOcrClientScreen() {
     val context = LocalContext.current
     val uploadItems = remember { mutableStateListOf<UploadItem>() }
+
+    val coroutineScope = rememberCoroutineScope()
 
     var currentCameraUri by remember { mutableStateOf<Uri?>(null) }
     var currentCameraFile by remember { mutableStateOf<File?>(null) }
@@ -174,6 +180,51 @@ fun MedicalOcrClientScreen() {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Select from gallery")
+            }
+
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        val pendingIndexes = uploadItems
+                            .mapIndexedNotNull { index, item ->
+                                if (item.status == "PENDING" || item.status == "FAILED") index else null
+                            }
+
+                        if (pendingIndexes.isEmpty()) {
+                            Toast.makeText(context, "No pending images to upload", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+
+                        pendingIndexes.forEach { index ->
+                            val item = uploadItems[index]
+
+                            uploadItems[index] = item.copy(status = "UPLOADING")
+
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    MqttUploader.uploadImage(context, File(item.filePath))
+                                }
+
+                                uploadItems[index] = item.copy(status = "SENT")
+                                Toast.makeText(context, "Uploaded: ${item.fileName}", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                uploadItems[index] = item.copy(status = "FAILED")
+                                Toast.makeText(
+                                    context,
+                                    "Upload failed: ${e.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Upload pending images")
             }
 
             Spacer(modifier = Modifier.height(24.dp))
