@@ -5,8 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/../.env"
 
-read -r -s -p "Enter MongoDB root password: " MONGO_PASSWORD
-echo ""
+# read -r -s -p "Enter MongoDB root password: " MONGO_PASSWORD
+# echo ""
 
 DETECTED_IP=$(hostname -I | awk '{print $1}')
 
@@ -14,7 +14,7 @@ cat > "$ENV_FILE" << EOF
 UID=$(id -u)                               # User ID local 
 GID=$(id -g)                                # Group ID local 
 MONGO_INITDB_ROOT_USERNAME=admin      # Username MongoDB
-MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD} # Parolă MongoDB
+MONGO_INITDB_ROOT_PASSWORD=changeit # ${MONGO_PASSWORD} # Parolă MongoDB
 JWT_SECRET=dev-secret                 # Secret pentru JWT
 AWS_ACCESS_KEY=local-aws-access       # Opțional: pentru S3
 AWS_SECRET_KEY=local-aws-secret       # Opțional: pentru S3
