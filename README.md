@@ -68,8 +68,12 @@ docker compose down
 docker compose up -d
 Running the Android app
 
-
-
+## Encrypt database test
+```
+sudo docker exec -it mongo-db mongosh -u <user> -p <password> --authenticationDatabase admin
+use mqtt-streaming-server
+db.photos.find() # fields should be encrypted, in case OCR succeeded
+```
 
 
 
