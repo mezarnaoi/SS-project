@@ -36,6 +36,9 @@ func (repo *photoRepository) GetPhotos(ctx context.Context, filters map[string]a
 		if err := cursor.Decode(&photo); err != nil {
 			return nil, err
 		}
+		if err := DecryptPhotoFields(&photo); err != nil {
+			return nil, err
+		}
 		photos = append(photos, &photo)
 	}
 
@@ -48,7 +51,11 @@ func (repo *photoRepository) GetPhotos(ctx context.Context, filters map[string]a
 
 func (repo *photoRepository) Save(ctx context.Context, photo *domain.Photo) error {
 	collection := repo.db.Collection("photos")
-	_, err := collection.InsertOne(ctx, photo)
+	photoToStore := *photo
+	if err := EncryptPhotoFields(&photoToStore); err != nil {
+		return err
+	}
+	_, err := collection.InsertOne(ctx, &photoToStore)
 	return err
 }
 
@@ -61,6 +68,9 @@ func (repo *photoRepository) GetByID(ctx context.Context, id string) (*domain.Ph
 	var photo domain.Photo
 	err = collection.FindOne(ctx, map[string]any{"_id": objID}).Decode(&photo)
 	if err != nil {
+		return nil, err
+	}
+	if err := DecryptPhotoFields(&photo); err != nil {
 		return nil, err
 	}
 	return &photo, nil

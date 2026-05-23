@@ -1,10 +1,75 @@
-import random
-from datetime import datetime, timedelta
-import pymongo
+#!/usr/bin/env python3
 
-MONGO_URI = "mongodb://admin:supersecret@localhost:27019/"
+import base64
+import os
+import random
+import sys
+from datetime import datetime, timedelta, timezone
+
+import pymongo
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+KEY_FILE = os.path.join(SCRIPT_DIR, "..", "secrets", "db_encryption.key")
+
+MONGO_URI = "mongodb://admin:123456@localhost:27019/"
 DB_NAME = "mqtt-streaming-server"
 COLLECTION_NAME = "photos"
+
+
+def load_key() -> bytes:
+    raw = None
+    if os.path.exists(KEY_FILE):
+        with open(KEY_FILE, "r") as f:
+            raw = f.read().strip()
+    else:
+        raw = os.environ.get("DB_ENCRYPTION_KEY", "")
+
+    if not raw:
+        sys.exit(
+            "ERROR: encryption key not found.\n"
+            f"  Run ./scripts/gen-db-key.sh or set DB_ENCRYPTION_KEY.\n"
+            f"  Expected: {KEY_FILE}"
+        )
+
+    try:
+        key = base64.b64decode(raw)
+    except Exception:
+        key = raw.encode()
+
+    if len(key) not in (16, 24, 32):
+        sys.exit(f"ERROR: key must be 16, 24 or 32 bytes after base64 decode, got {len(key)}")
+
+    return key
+
+
+def encrypt(key: bytes, plaintext: str) -> str:
+    """AES-256-GCM encrypt. Matches Go utils.EncryptString exactly:
+    output = base64(nonce || ciphertext+tag), empty string passes through."""
+    if not plaintext:
+        return plaintext
+    nonce = os.urandom(12)
+    aesgcm = AESGCM(key)
+    ciphertext = aesgcm.encrypt(nonce, plaintext.encode(), None)
+    return base64.b64encode(nonce + ciphertext).decode()
+
+
+PHI_FIELDS = [
+    "text",
+    "unitate_medicala",
+    "adresa_unitate_medicala",
+    "telefon_unitate_medicala",
+    "numar_fisa",
+    "societate_unitate",
+    "adresa_angajator",
+    "telefon_angajator",
+    "nume",
+    "prenume",
+    "cnp",
+    "profesie_functie",
+    "loc_de_munca",
+    "recomandari",
+]
 
 NAMES = ["Ion", "Maria", "Andrei", "Elena", "Radu", "Ana", "George", "Ioana",
          "Mihai", "Cristina", "Alexandru", "Gabriela", "Florin", "Daniela", "Vlad"]
@@ -24,8 +89,9 @@ MEDICAL_UNITS = [
     ("Centrul Medical Vida", "Bd. Unirii nr 45", "0700200300"),
 ]
 
-def generate_photo(days_ago=None, expiring_next_month=False):
-    now = datetime.now()
+
+def generate_photo(key: bytes, days_ago=None, expiring_next_month=False) -> dict:
+    now = datetime.now(timezone.utc)
 
     if days_ago is not None:
         timestamp = now - timedelta(days=days_ago)
@@ -40,7 +106,6 @@ def generate_photo(days_ago=None, expiring_next_month=False):
     control_types = ["Angajare", "Periodic", "Adaptare", "Reluare", "Supraveghere", "Alte"]
     selected_control = random.choice(control_types)
 
-    # Corectat la UPPERCASE pentru a face match cu frontend-ul/backend-ul
     aviz_types = ["APT", "APT CONDITIONAT", "INAPT TEMPORAR", "INAPT"]
     selected_aviz = random.choices(aviz_types, weights=[70, 15, 10, 5], k=1)[0]
 
@@ -48,15 +113,35 @@ def generate_photo(days_ago=None, expiring_next_month=False):
     unit = random.choice(MEDICAL_UNITS)
     nume = random.choice(SURNAMES)
     prenume = random.choice(NAMES)
-    
-    # Generare date pentru rapoarte de performanta OCR
+
     ocr_conf = random.uniform(70.0, 99.9)
     needs_review = ocr_conf < 95.0
 
-    return {
+    doc = {
+        # --- non-PHI (plaintext) ---
         "timestamp": timestamp,
         "image_type": "jpeg",
         "device_id": f"device-{random.randint(1, 5)}",
+        "tip_control": f"Control {selected_control}",
+        "control_angajare": selected_control == "Angajare",
+        "control_periodic": selected_control == "Periodic",
+        "control_adaptare": selected_control == "Adaptare",
+        "control_reluare": selected_control == "Reluare",
+        "control_supraveghere": selected_control == "Supraveghere",
+        "control_alte": selected_control == "Alte",
+        "aviz_medical": selected_aviz,
+        "aviz_apt": selected_aviz == "APT",
+        "aviz_apt_conditionat": selected_aviz == "APT CONDITIONAT",
+        "aviz_inapt_temporar": selected_aviz == "INAPT TEMPORAR",
+        "aviz_inapt": selected_aviz == "INAPT",
+        "data": timestamp,
+        "data_urm_examinari": data_urm,
+        "ocr_confidence": ocr_conf,
+        "needs_review": needs_review,
+        "processing_time_ms": random.randint(200, 1800),
+        "reviewed_by": "admin" if needs_review and random.choice([True, False]) else None,
+
+        # --- PHI (will be encrypted below) ---
         "text": f"OCR: {nume} {prenume}",
         "unitate_medicala": unit[0],
         "adresa_unitate_medicala": unit[1],
@@ -67,43 +152,43 @@ def generate_photo(days_ago=None, expiring_next_month=False):
         "telefon_angajator": company[2],
         "nume": nume,
         "prenume": prenume,
-        "cnp": f"{random.randint(1,2)}{random.randint(50,99)}{random.randint(10,12)}{random.randint(10,28)}123456",
+        "cnp": (f"{random.randint(1,2)}{random.randint(50,99)}"
+                f"{random.randint(10,12)}{random.randint(10,28)}123456"),
         "profesie_functie": random.choice(JOBS),
         "loc_de_munca": company[0],
-        "tip_control": f"Control {selected_control}",
-        "aviz_medical": selected_aviz,
         "recomandari": "Nicio recomandare" if selected_aviz == "APT" else "Reevaluare necesara",
-        "data": timestamp,
-        "data_urm_examinari": data_urm,
-        
-        # Metrice noi adaugate pentru tab-ul Performance
-        "ocr_confidence": ocr_conf,
-        "needs_review": needs_review,
-        "reviewed_by": "admin" if needs_review and random.choice([True, False]) else None,
-        "processing_time_ms": random.randint(200, 1800)
     }
 
+    for field in PHI_FIELDS:
+        doc[field] = encrypt(key, doc[field])
+
+    return doc
+
+
 def seed_data():
-    try:
-        client = pymongo.MongoClient(MONGO_URI)
-        db = client[DB_NAME]
-        collection = db[COLLECTION_NAME]
+    key = load_key()
+    print(f"Loaded encryption key from: {KEY_FILE if os.path.exists(KEY_FILE) else 'DB_ENCRYPTION_KEY env var'}")
 
-        # Curata datele vechi ca sa nu se amestece (optional, dar recomandat pt testare curata)
-        collection.delete_many({})
+    client = pymongo.MongoClient(MONGO_URI)
+    db = client[DB_NAME]
+    collection = db[COLLECTION_NAME]
 
-        records = []
-        for _ in range(20): records.append(generate_photo())
-        for _ in range(15): records.append(generate_photo(days_ago=random.randint(0, 30)))
-        for _ in range(10): records.append(generate_photo(expiring_next_month=True))
-        for _ in range(5):  records.append(generate_photo(days_ago=random.randint(0, 7)))
+    collection.delete_many({})
 
-        result = collection.insert_many(records)
-        print(f"Inserted {len(result.inserted_ids)} records!")
-        print(f"Total: {collection.count_documents({})} documents")
+    records = []
+    for _ in range(20):
+        records.append(generate_photo(key))
+    for _ in range(15):
+        records.append(generate_photo(key, days_ago=random.randint(0, 30)))
+    for _ in range(10):
+        records.append(generate_photo(key, expiring_next_month=True))
+    for _ in range(5):
+        records.append(generate_photo(key, days_ago=random.randint(0, 7)))
 
-    except Exception as e:
-        print(f"Error: {e}")
+    result = collection.insert_many(records)
+    print(f"Inserted {len(result.inserted_ids)} records (PHI fields encrypted)")
+    print(f"Total: {collection.count_documents({})} documents")
+
 
 if __name__ == "__main__":
     seed_data()

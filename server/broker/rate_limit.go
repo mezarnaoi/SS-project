@@ -11,7 +11,7 @@ import (
 const (
 	DefaultMQTTRateLimitMessages = 60
 
-	DefaultMQTTRateLimitWindowSeconds = 60
+	DefaultMQTTRateLimitWindowSeconds = 30
 
 	mqttRateLimitMessagesEnv      = "MQTT_RATE_LIMIT_MESSAGES"
 	mqttRateLimitWindowSecondsEnv = "MQTT_RATE_LIMIT_WINDOW_SECONDS"

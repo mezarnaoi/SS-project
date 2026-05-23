@@ -42,7 +42,6 @@ func (ctlr PhotoController) GetPhotos(w http.ResponseWriter, r *http.Request) {
 
 	start := r.URL.Query().Get("start")
 	end := r.URL.Query().Get("end")
-	text := r.URL.Query().Get("text")
 	deviceID := r.URL.Query().Get("device_id")
 
 	if start == "" {
@@ -70,13 +69,6 @@ func (ctlr PhotoController) GetPhotos(w http.ResponseWriter, r *http.Request) {
 			"$gte": time.Unix(startInt, 0),
 			"$lte": time.Unix(endInt, 0),
 		},
-	}
-
-	if text != "" {
-		filters["text"] = map[string]any{
-			"$regex":   text,
-			"$options": "i",
-		}
 	}
 
 	if deviceID != "" {

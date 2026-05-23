@@ -92,9 +92,10 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 
 	processingStart := time.Now()
 
-	text, confidence, err := b.extractTextFromImage(ctx, body, imageType)
-	if err != nil {
-		fmt.Printf("Failed to extract text from image: %v\n", err)
+	var ocrErr error
+	text, confidence, ocrErr := b.extractTextFromImage(ctx, body, imageType)
+	if ocrErr != nil {
+		fmt.Printf("Failed to extract text from image: %v\n", ocrErr)
 		text = "OCR failed"
 		confidence = 0
 	}
@@ -104,10 +105,11 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	var parserFailed bool
 
 	if utils.IsMedicalCertificate(text) {
-		medicalData, err = safeParseMedicalCertificate(text)
-		if err != nil {
+		var parseErr error
+		medicalData, parseErr = safeParseMedicalCertificate(text)
+		if parseErr != nil {
 			parserFailed = true
-			fmt.Printf("Failed to parse medical certificate: %v\n", err)
+			fmt.Printf("Failed to parse medical certificate: %v\n", parseErr)
 		} else if medicalData != nil {
 			fmt.Printf("Extracted medical data: %+v\n", medicalData)
 		}
@@ -127,7 +129,10 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 		ProcessingTimeMs: processingTimeMs,
 	}
 
-	if confidence < ocrConfidenceThreshold {
+	if ocrErr != nil {
+		photo.NeedsReview = true
+		photo.ReviewReason = fmt.Sprintf("OCR extraction failed: %v", ocrErr)
+	} else if confidence < ocrConfidenceThreshold {
 		photo.NeedsReview = true
 		photo.ReviewReason = fmt.Sprintf(
 			"OCR confidence %.1f%% is below the %.0f%% threshold; extracted fields require human verification",

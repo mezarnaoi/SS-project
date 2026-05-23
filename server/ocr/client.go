@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const defaultOCRTimeout = 20 * time.Second
+const defaultOCRTimeout = 35 * time.Second
 
 type Client struct {
 	baseURL    string
