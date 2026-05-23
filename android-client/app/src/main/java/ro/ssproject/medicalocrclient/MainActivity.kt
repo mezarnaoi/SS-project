@@ -1,10 +1,18 @@
 package ro.ssproject.medicalocrclient
 
+import android.Manifest
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,9 +25,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import ro.ssproject.medicalocrclient.ui.theme.SSMedicalOCRClientTheme
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+data class UploadItem(
+    val fileName: String,
+    val filePath: String,
+    val status: String
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +61,75 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MedicalOcrClientScreen() {
+    val context = LocalContext.current
+    val uploadItems = remember { mutableStateListOf<UploadItem>() }
+
+    var currentCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var currentCameraFile by remember { mutableStateOf<File?>(null) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val imageFile = currentCameraFile
+
+        if (success && imageFile != null && imageFile.exists()) {
+            uploadItems.add(
+                0,
+                UploadItem(
+                    fileName = imageFile.name,
+                    filePath = imageFile.absolutePath,
+                    status = "PENDING"
+                )
+            )
+
+            Toast.makeText(context, "Photo saved as pending upload", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Photo capture cancelled or failed", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val imageFile = createImageFile(context)
+            val imageUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                imageFile
+            )
+
+            currentCameraFile = imageFile
+            currentCameraUri = imageUri
+            takePictureLauncher.launch(imageUri)
+        } else {
+            Toast.makeText(context, "Camera permission is required", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val copiedFile = copyGalleryImageToLocalStorage(context, uri)
+
+            if (copiedFile != null) {
+                uploadItems.add(
+                    0,
+                    UploadItem(
+                        fileName = copiedFile.name,
+                        filePath = copiedFile.absolutePath,
+                        status = "PENDING"
+                    )
+                )
+
+                Toast.makeText(context, "Image selected as pending upload", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Failed to copy selected image", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
@@ -61,7 +156,7 @@ fun MedicalOcrClientScreen() {
 
             Button(
                 onClick = {
-                    // TODO: open camera
+                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -72,7 +167,9 @@ fun MedicalOcrClientScreen() {
 
             Button(
                 onClick = {
-                    // TODO: open gallery picker
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -88,10 +185,23 @@ fun MedicalOcrClientScreen() {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            UploadStatusCard(
-                fileName = "No images yet",
-                status = "Waiting for capture"
-            )
+            if (uploadItems.isEmpty()) {
+                UploadStatusCard(
+                    fileName = "No images yet",
+                    filePath = "-",
+                    status = "Waiting for capture"
+                )
+            } else {
+                uploadItems.forEach { item ->
+                    UploadStatusCard(
+                        fileName = item.fileName,
+                        filePath = item.filePath,
+                        status = item.status
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
         }
     }
 }
@@ -99,6 +209,7 @@ fun MedicalOcrClientScreen() {
 @Composable
 fun UploadStatusCard(
     fileName: String,
+    filePath: String,
     status: String
 ) {
     Card(
@@ -115,10 +226,59 @@ fun UploadStatusCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            Row {
+                Text(
+                    text = "Status: ",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             Text(
-                text = status,
-                style = MaterialTheme.typography.bodyMedium
+                text = filePath,
+                style = MaterialTheme.typography.bodySmall
             )
         }
+    }
+}
+
+fun createImageFile(context: Context): File {
+    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    val directory = File(context.cacheDir, "captured_images")
+
+    if (!directory.exists()) {
+        directory.mkdirs()
+    }
+
+    return File(directory, "medical_doc_$timestamp.jpg")
+}
+
+fun copyGalleryImageToLocalStorage(context: Context, uri: Uri): File? {
+    return try {
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val directory = File(context.filesDir, "stored_images")
+
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+
+        val destinationFile = File(directory, "gallery_doc_$timestamp.jpg")
+
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            FileOutputStream(destinationFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        destinationFile
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
