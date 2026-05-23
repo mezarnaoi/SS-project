@@ -75,7 +75,11 @@ use mqtt-streaming-server
 db.photos.find() # fields should be encrypted, in case OCR succeeded
 ```
 
+## Starting the project
 
+```
+./start.sh # Enter the mongoDB password
+```
 
 
 
