@@ -52,13 +52,13 @@ func (repo *UserRepository) Save(ctx context.Context, email, password string) er
 }
 
 func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
-	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
-	if !emailRegex.MatchString(normalizedEmail) {
+	matched := emailRegex.FindString(strings.ToLower(strings.TrimSpace(email)))
+	if matched == "" {
 		return nil, fmt.Errorf("invalid email format")
 	}
 	collection := repo.db.Collection("users")
 	var user domain.User
-	err := collection.FindOne(ctx, bson.M{"email": normalizedEmail}).Decode(&user)
+	err := collection.FindOne(ctx, bson.M{"email": matched}).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
