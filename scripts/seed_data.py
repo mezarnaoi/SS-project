@@ -7,10 +7,9 @@ DB_NAME = "mqtt-streaming-server"
 COLLECTION_NAME = "photos"
 
 NAMES = ["Ion", "Maria", "Andrei", "Elena", "Radu", "Ana", "George", "Ioana",
-         "Mihai", "Cristina", "Alexandru", "Gabriela", "Florin", "Daniela", "Vlad",
-         "Bogdan", "Roxana", "Catalin", "Simona", "Adrian"]
+         "Mihai", "Cristina", "Alexandru", "Gabriela", "Florin", "Daniela", "Vlad"]
 SURNAMES = ["Popescu", "Ionescu", "Dumitru", "Stoica", "Radu", "Gheorghe", "Matei",
-            "Florea", "Costea", "Marinescu", "Dinu", "Toma", "Stanciu", "Neagu", "Preda"]
+            "Florea", "Costea", "Marinescu", "Dinu", "Toma", "Stanciu"]
 JOBS = ["Inginer", "Programator", "Medic", "Profesor", "Contabil",
         "Sofer", "Manager", "Asistent", "Operator", "Electrician", "Mecanic"]
 COMPANIES = [
@@ -23,7 +22,6 @@ COMPANIES = [
 MEDICAL_UNITS = [
     ("Clinica Sanatatea", "Str. Sanatatii nr 1", "0700100200"),
     ("Centrul Medical Vida", "Bd. Unirii nr 45", "0700200300"),
-    ("Policlinica Medvita", "Str. Lalelelor nr 7", "0700300400"),
 ]
 
 def generate_photo(days_ago=None, expiring_next_month=False):
@@ -42,13 +40,18 @@ def generate_photo(days_ago=None, expiring_next_month=False):
     control_types = ["Angajare", "Periodic", "Adaptare", "Reluare", "Supraveghere", "Alte"]
     selected_control = random.choice(control_types)
 
-    aviz_types = ["APT", "APT Conditionat", "Inapt Temporar", "Inapt"]
+    # Corectat la UPPERCASE pentru a face match cu frontend-ul/backend-ul
+    aviz_types = ["APT", "APT CONDITIONAT", "INAPT TEMPORAR", "INAPT"]
     selected_aviz = random.choices(aviz_types, weights=[70, 15, 10, 5], k=1)[0]
 
     company = random.choice(COMPANIES)
     unit = random.choice(MEDICAL_UNITS)
     nume = random.choice(SURNAMES)
     prenume = random.choice(NAMES)
+    
+    # Generare date pentru rapoarte de performanta OCR
+    ocr_conf = random.uniform(70.0, 99.9)
+    needs_review = ocr_conf < 95.0
 
     return {
         "timestamp": timestamp,
@@ -68,20 +71,16 @@ def generate_photo(days_ago=None, expiring_next_month=False):
         "profesie_functie": random.choice(JOBS),
         "loc_de_munca": company[0],
         "tip_control": f"Control {selected_control}",
-        "control_angajare": selected_control == "Angajare",
-        "control_periodic": selected_control == "Periodic",
-        "control_adaptare": selected_control == "Adaptare",
-        "control_reluare": selected_control == "Reluare",
-        "control_supraveghere": selected_control == "Supraveghere",
-        "control_alte": selected_control == "Alte",
         "aviz_medical": selected_aviz,
-        "aviz_apt": selected_aviz == "APT",
-        "aviz_apt_conditionat": selected_aviz == "APT Conditionat",
-        "aviz_inapt_temporar": selected_aviz == "Inapt Temporar",
-        "aviz_inapt": selected_aviz == "Inapt",
-        "recomandari": "Nicio recomandare" if selected_aviz == "APT" else "Reevaluare in 30 zile",
+        "recomandari": "Nicio recomandare" if selected_aviz == "APT" else "Reevaluare necesara",
         "data": timestamp,
         "data_urm_examinari": data_urm,
+        
+        # Metrice noi adaugate pentru tab-ul Performance
+        "ocr_confidence": ocr_conf,
+        "needs_review": needs_review,
+        "reviewed_by": "admin" if needs_review and random.choice([True, False]) else None,
+        "processing_time_ms": random.randint(200, 1800)
     }
 
 def seed_data():
@@ -90,23 +89,14 @@ def seed_data():
         db = client[DB_NAME]
         collection = db[COLLECTION_NAME]
 
+        # Curata datele vechi ca sa nu se amestece (optional, dar recomandat pt testare curata)
+        collection.delete_many({})
+
         records = []
-
-        # 20 random records spread over last year
-        for _ in range(20):
-            records.append(generate_photo())
-
-        # 15 records from last 30 days (for "last month" reports)
-        for i in range(15):
-            records.append(generate_photo(days_ago=random.randint(0, 30)))
-
-        # 10 records expiring next month (for expiry reports)
-        for _ in range(10):
-            records.append(generate_photo(expiring_next_month=True))
-
-        # 5 records from last week
-        for _ in range(5):
-            records.append(generate_photo(days_ago=random.randint(0, 7)))
+        for _ in range(20): records.append(generate_photo())
+        for _ in range(15): records.append(generate_photo(days_ago=random.randint(0, 30)))
+        for _ in range(10): records.append(generate_photo(expiring_next_month=True))
+        for _ in range(5):  records.append(generate_photo(days_ago=random.randint(0, 7)))
 
         result = collection.insert_many(records)
         print(f"Inserted {len(result.inserted_ids)} records!")
