@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	RateLimitRequests = 60          // max requests per window per IP
+	RateLimitRequests = 120         // max requests per window per IP
 	RateLimitWindow   = time.Minute // sliding window duration
 )
 
@@ -33,10 +33,10 @@ func InitRoutes(db *mongo.Database, mqttClient mqtt.Client) http.Handler {
 	// Broker info endpoint - returns the MQTT broker connection info
 	mux.HandleFunc("/broker-info", handleBrokerInfo)
 
-	corsHandler := withCORS(mux)
-	rateLimited := withRateLimit(RateLimitRequests, RateLimitWindow)(corsHandler)
+	rateLimited := withRateLimit(RateLimitRequests, RateLimitWindow)(mux)
+	corsHandler := withCORS(rateLimited)
 
-	return rateLimited
+	return corsHandler
 }
 
 // handleBrokerInfo returns the MQTT broker IP and port for client connections
