@@ -50,11 +50,16 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	}
 
 	ctx := context.Background()
-	fmt.Println("Received message on topic:", msg.Topic())
 
 	if RejectOversizedMQTTPayload(msg.Topic(), msg.Payload()) {
 		return
 	}
+
+	if RejectRateLimitedMQTTMessage(msg.Topic()) {
+		return
+	}
+
+	fmt.Println("Received message on topic:", msg.Topic())
 
 	device, err := b.deviceRepository.GetByID(ctx, deviceID)
 	if err != nil {
@@ -223,6 +228,10 @@ func (b BrokerHandler) RegisterDevice(_ mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
+	if RejectRateLimitedMQTTMessage(msg.Topic()) {
+		return
+	}
+
 	body := msg.Payload()
 	fmt.Printf("Received device registration: %s\n", body)
 
@@ -296,6 +305,10 @@ func (b BrokerHandler) DisconnectDevice(_ mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
+	if RejectRateLimitedMQTTMessage(msg.Topic()) {
+		return
+	}
+
 	message := string(msg.Payload())
 	fmt.Printf("Received device disconnection: %s\n", message)
 
@@ -322,6 +335,10 @@ func (b BrokerHandler) HandleCommand(_ mqtt.Client, msg mqtt.Message) {
 	fmt.Println("Received command on topic:", msg.Topic())
 
 	if RejectOversizedMQTTPayload(msg.Topic(), msg.Payload()) {
+		return
+	}
+
+	if RejectRateLimitedMQTTMessage(msg.Topic()) {
 		return
 	}
 
