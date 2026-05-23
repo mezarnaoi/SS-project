@@ -64,15 +64,16 @@ func (ctlr PhotoController) GetPhotos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filters := map[string]any{
-		"timestamp": map[string]any{
-			"$gte": time.Unix(startInt, 0),
-			"$lte": time.Unix(endInt, 0),
-		},
+	startTime := time.Unix(startInt, 0)
+	endTime := time.Unix(endInt, 0)
+
+	filters := domain.PhotoFilters{
+		StartTime: &startTime,
+		EndTime:   &endTime,
 	}
 
 	if deviceID != "" {
-		filters["device_id"] = deviceID
+		filters.DeviceID = deviceID
 	}
 
 	photos, err := ctlr.PhotoRepository.GetPhotos(ctx, filters)
@@ -98,8 +99,6 @@ func (ctlr PhotoController) DeletePhoto(w http.ResponseWriter, r *http.Request) 
 	}
 
 	ctx := r.Context()
-
-
 
 	// Extract photo ID from URL path: /photos/{id}
 	path := strings.TrimPrefix(r.URL.Path, "/photos/")
@@ -167,8 +166,6 @@ func (ctlr PhotoController) DeleteAllPhotos(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-
-
 
 	// Delete all photos from database
 	deletedCount, err := ctlr.PhotoRepository.DeleteAll(ctx)
