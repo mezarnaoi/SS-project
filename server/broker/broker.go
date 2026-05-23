@@ -52,6 +52,10 @@ func (b BrokerHandler) HandlePhoto(_ mqtt.Client, msg mqtt.Message) {
 	ctx := context.Background()
 	fmt.Println("Received message on topic:", msg.Topic())
 
+	if RejectOversizedMQTTPayload(msg.Topic(), msg.Payload()) {
+		return
+	}
+
 	device, err := b.deviceRepository.GetByID(ctx, deviceID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -214,6 +218,11 @@ func (b BrokerHandler) RegisterDevice(_ mqtt.Client, msg mqtt.Message) {
 	deviceID := topic[len("register/"):]
 	ctx := context.Background()
 	fmt.Println("Received message on topic:", msg.Topic())
+
+	if RejectOversizedMQTTPayload(msg.Topic(), msg.Payload()) {
+		return
+	}
+
 	body := msg.Payload()
 	fmt.Printf("Received device registration: %s\n", body)
 
@@ -282,6 +291,11 @@ func (b BrokerHandler) DisconnectDevice(_ mqtt.Client, msg mqtt.Message) {
 
 	ctx := context.Background()
 	fmt.Println("Received message on topic:", msg.Topic())
+
+	if RejectOversizedMQTTPayload(msg.Topic(), msg.Payload()) {
+		return
+	}
+
 	message := string(msg.Payload())
 	fmt.Printf("Received device disconnection: %s\n", message)
 
@@ -306,6 +320,11 @@ func (b BrokerHandler) DisconnectDevice(_ mqtt.Client, msg mqtt.Message) {
 
 func (b BrokerHandler) HandleCommand(_ mqtt.Client, msg mqtt.Message) {
 	fmt.Println("Received command on topic:", msg.Topic())
+
+	if RejectOversizedMQTTPayload(msg.Topic(), msg.Payload()) {
+		return
+	}
+
 	body := string(msg.Payload())
 	fmt.Printf("Command payload: %s\n", body)
 }
