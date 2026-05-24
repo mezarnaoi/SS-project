@@ -3,6 +3,7 @@ import time
 import os
 import socket
 import json
+import threading
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 import sys
@@ -115,7 +116,6 @@ def on_publish(client, userdata, mid, reason_code, properties):
         print(f"\n✅ Device '{DEVICE_ID}' registered and photo sent!")
         print(f"   Topic: {PHOTO_TOPIC}")
         client.disconnect()
-        sys.exit(0)
 
 # Create MQTT client
 # client = mqtt.Client(client_id=DEVICE_ID)
@@ -125,7 +125,7 @@ client.on_publish = on_publish
 
 # TLS configuration for mTLS
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-ssl_context.check_hostname = False
+ssl_context.check_hostname = True
 ssl_context.verify_mode = ssl.CERT_REQUIRED
 ssl_context.load_verify_locations(CA_CRT)
 ssl_context.load_cert_chain(certfile=CLIENT_CRT, keyfile=CLIENT_KEY)
