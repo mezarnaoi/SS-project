@@ -148,7 +148,7 @@ class ImageUploader:
 
         # TLS configuration for mTLS
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_context.check_hostname = False
+        ssl_context.check_hostname = True
         ssl_context.verify_mode = ssl.CERT_REQUIRED
         ssl_context.load_verify_locations(CA_CRT)
         ssl_context.load_cert_chain(certfile=CLIENT_CRT, keyfile=CLIENT_KEY)
