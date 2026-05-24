@@ -49,6 +49,8 @@ const LoginPage: React.FC = () => {
     <div className="flex justify-center items-center min-h-[80vh]">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <h2 className="text-2xl font-semibold text-sky-700 mb-6 text-center">Login</h2>
+
+        
         
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-300 text-red-700 rounded-md">

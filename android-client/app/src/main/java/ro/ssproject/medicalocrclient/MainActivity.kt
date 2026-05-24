@@ -177,13 +177,20 @@ fun MedicalOcrClientScreen() {
             }
         )
 
-        try {
-            commandListener.connectAndSubscribe()
-            Toast.makeText(context, "Listening for MQTT commands", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(context, "Could not connect command listener: ${e.message}", Toast.LENGTH_LONG).show()
+        val thread = Thread {
+            try {
+                commandListener.connectAndSubscribe()
+                activity.runOnUiThread {
+                    Toast.makeText(context, "Listening for MQTT commands", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                activity.runOnUiThread {
+                    Toast.makeText(context, "Could not connect command listener: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
+        thread.start()
 
         onDispose {
             commandListener.disconnect()

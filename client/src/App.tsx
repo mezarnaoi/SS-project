@@ -7,40 +7,54 @@ import PhotosPage from './pages/photosPage';
 import DevicesPage from './pages/devicesPage';
 import StatisticsPage from './pages/statisticsPage';
 import ReportsPage from './pages/reportsPage';
+import UsersPage from './pages/usersPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
 const Layout = () => {
   const navigate = useNavigate();
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, logout, hasPageAccess, isAdmin } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   // Left-side buttons (only shown when logged in)
-  const leftButtons = isLoggedIn
-    ? [
-      {
+  const leftButtons = isLoggedIn ? [
+    ...(hasPageAccess('photos')
+      ? [{
         text: 'Photos',
         variant: 'secondary' as const,
         onClick: () => navigate('/photos')
-      },
-      {
+      }]
+      : []),
+    ...(hasPageAccess('devices')
+      ? [{
         text: 'Devices',
         variant: 'secondary' as const,
         onClick: () => navigate('/devices')
-      },
-      {
+      }]
+      : []),
+    ...(hasPageAccess('statistics')
+      ? [{
         text: 'Statistics',
         variant: 'secondary' as const,
         onClick: () => navigate('/statistics')
-      },
-      {
+      }]
+      : []),
+    ...(hasPageAccess('reports')
+      ? [{
         text: 'Reports',
         variant: 'secondary' as const,
         onClick: () => navigate('/reports')
-      }
-    ]
-    : [];
+      }]
+      : []),
+    ...(isAdmin
+      ? [{
+        text: 'Users',
+        variant: 'secondary' as const,
+        onClick: () => navigate('/users')
+      }]
+      : []),
+  ] : [];
 
   // Right-side buttons (different based on login status)
   const rightButtons = isLoggedIn
@@ -109,11 +123,20 @@ const App = () => {
             </Route>
 
             {/* Protected routes - only for authenticated users */}
-            <Route element={<ProtectedRoute authRequired={true} />}>
+            <Route element={<ProtectedRoute authRequired={true} requiredPage="photos" />}>
               <Route path="/photos" element={<PhotosPage />} />
+            </Route>
+            <Route element={<ProtectedRoute authRequired={true} requiredPage="devices" />}>
               <Route path="/devices" element={<DevicesPage />} />
+            </Route>
+            <Route element={<ProtectedRoute authRequired={true} requiredPage="statistics" />}>
               <Route path="/statistics" element={<StatisticsPage />} />
+            </Route>
+            <Route element={<ProtectedRoute authRequired={true} requiredPage="reports" />}>
               <Route path="/reports" element={<ReportsPage />} />
+            </Route>
+            <Route element={<ProtectedRoute authRequired={true} requiredPage="users" />}>
+              <Route path="/users" element={<UsersPage />} />
             </Route>
 
             {/* Fallback route */}

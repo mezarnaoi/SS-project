@@ -3,14 +3,16 @@ package routes
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt/v4"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	jwt "github.com/golang-jwt/jwt/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -119,44 +121,114 @@ func noAuth(next http.Handler) http.Handler {
 }
 
 func withAuth(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        authHeader := r.Header.Get("Authorization")
-        if authHeader == "" || len(authHeader) < 8 {
-            http.Error(w, "Authorization header missing", http.StatusUnauthorized)
-            return
-        }
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" || len(authHeader) < 8 {
+			http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+			return
+		}
 
-        tokenString := authHeader[7:]
-        token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-                return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-            }
-            return []byte(os.Getenv("JWT_SECRET")), nil
-        })
-        if err != nil || !token.Valid {
-            http.Error(w, "Invalid token", http.StatusUnauthorized)
-            return
-        }
+		tokenString := authHeader[7:]
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+		if err != nil || !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
 
-        claims, ok := token.Claims.(jwt.MapClaims)
-        if !ok {
-            http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-            return
-        }
-        email, ok := claims["email"].(string)
-        if !ok {
-            http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-            return
-        }
-        role, ok := claims["role"].(string)
-        if !ok {
-            http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-            return
-        }
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+			return
+		}
+		email, ok := claims["email"].(string)
+		if !ok {
+			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+			return
+		}
+		role, ok := claims["role"].(string)
+		if !ok {
+			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+			return
+		}
+		pages, err := extractPages(claims["pages"])
+		if err != nil {
+			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+			return
+		}
 
-        ctx := context.WithValue(r.Context(), "email", email)
-        ctx = context.WithValue(ctx, "role", role)
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
+		ctx := context.WithValue(r.Context(), "email", email)
+		ctx = context.WithValue(ctx, "role", role)
+		ctx = context.WithValue(ctx, "pages", pages)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
+func extractPages(raw any) ([]string, error) {
+	if raw == nil {
+		return []string{"reports"}, nil
+	}
+	switch value := raw.(type) {
+	case []string:
+		return value, nil
+	case []any:
+		pages := make([]string, 0, len(value))
+		for _, item := range value {
+			page, ok := item.(string)
+			if !ok {
+				return nil, errors.New("invalid page claim type")
+			}
+			trimmed := strings.TrimSpace(strings.ToLower(page))
+			if trimmed == "" {
+				continue
+			}
+			pages = append(pages, trimmed)
+		}
+		if len(pages) == 0 {
+			return []string{"reports"}, nil
+		}
+		return pages, nil
+	default:
+		return nil, errors.New("invalid pages claim")
+	}
+}
+
+func withAdminOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role, _ := r.Context().Value("role").(string)
+		if role != "admin" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func withAnyPage(next http.Handler, allowedPages ...string) http.Handler {
+	allowed := make(map[string]struct{}, len(allowedPages))
+	for _, page := range allowedPages {
+		allowed[strings.ToLower(strings.TrimSpace(page))] = struct{}{}
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role, _ := r.Context().Value("role").(string)
+		if role == "admin" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		pages, _ := r.Context().Value("pages").([]string)
+		for _, page := range pages {
+			if _, ok := allowed[strings.ToLower(strings.TrimSpace(page))]; ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	})
+}

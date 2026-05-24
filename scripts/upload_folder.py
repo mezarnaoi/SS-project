@@ -14,6 +14,7 @@ import os
 import socket
 import json
 import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
 import sys
 import argparse
 from pathlib import Path
@@ -60,7 +61,8 @@ class ImageUploader:
         except:
             return "unknown"
     
-    def on_connect(self, client, userdata, flags, rc):
+    def on_connect(self, client, userdata, connect_flags, reason_code, properties):
+        rc = reason_code.value
         if rc == 0:
             print(f"✓ Conectat la MQTT Broker ({BROKER}:{PORT})")
             self.connected = True
@@ -83,7 +85,7 @@ class ImageUploader:
             print(f"✗ Eroare conexiune, cod: {rc}")
             sys.exit(1)
     
-    def on_publish(self, client, userdata, mid):
+    def on_publish(self, client, userdata, mid, reason_code, properties):
         # Send next image after current one is published
         time.sleep(0.3)  # Small delay between images
         self.send_next_image(client)
@@ -139,19 +141,25 @@ class ImageUploader:
         print("Se încarcă imaginile...\n")
         
         # Create MQTT client
-        client = mqtt.Client(client_id=self.device_id)
+        # client = mqtt.Client(client_id=self.device_id)
+        client = mqtt.Client(CallbackAPIVersion.VERSION2, client_id=self.device_id)
         client.on_connect = self.on_connect
         client.on_publish = self.on_publish
 
-        # mtLS configuration for mTLS
-        client.tls_set(
-            ca_certs=CA_CRT,
-            certfile=CLIENT_CRT,
-            keyfile=CLIENT_KEY,
-            tls_version=ssl.PROTOCOL_TLSv1_2
-        )
-        # omitting hostname verification for local testing
-        client.tls_insecure_set(False)
+        # TLS configuration for mTLS
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        ssl_context.load_verify_locations(CA_CRT)
+        ssl_context.load_cert_chain(certfile=CLIENT_CRT, keyfile=CLIENT_KEY)
+        client.tls_set_context(ssl_context)
+        # client.tls_set(
+        #     ca_certs=CA_CRT,
+        #     certfile=CLIENT_CRT,
+        #     keyfile=CLIENT_KEY,
+        #     tls_version=ssl.PROTOCOL_TLSv1_2
+        # )
+        # client.tls_insecure_set(False)
         
         try:
             client.connect(BROKER, PORT, 60)
