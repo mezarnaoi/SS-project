@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,12 @@ import (
 
 type PhotoController struct {
 	PhotoRepository domain.PhotoRepository
+}
+
+var validDeviceIDPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
+
+func isValidDeviceID(deviceID string) bool {
+	return validDeviceIDPattern.MatchString(deviceID)
 }
 
 func InitPhotoRoutes(db *mongo.Database, mux *http.ServeMux) {
@@ -64,15 +71,21 @@ func (ctlr PhotoController) GetPhotos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filters := map[string]any{
-		"timestamp": map[string]any{
-			"$gte": time.Unix(startInt, 0),
-			"$lte": time.Unix(endInt, 0),
-		},
+	startTime := time.Unix(startInt, 0)
+	endTime := time.Unix(endInt, 0)
+
+	filters := domain.PhotoFilters{
+		StartTime: &startTime,
+		EndTime:   &endTime,
 	}
 
 	if deviceID != "" {
-		filters["device_id"] = deviceID
+		if !isValidDeviceID(deviceID) {
+			http.Error(w, "Invalid device_id value", http.StatusBadRequest)
+			return
+		}
+
+		filters.DeviceID = deviceID
 	}
 
 	photos, err := ctlr.PhotoRepository.GetPhotos(ctx, filters)

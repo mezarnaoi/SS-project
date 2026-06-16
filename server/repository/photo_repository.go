@@ -20,11 +20,32 @@ func NewPhotoRepository(db *mongo.Database) *photoRepository {
 	return &photoRepository{db: db}
 }
 
-func (repo *photoRepository) GetPhotos(ctx context.Context, filters map[string]any) ([]*domain.Photo, error) {
+func (repo *photoRepository) GetPhotos(ctx context.Context, filters domain.PhotoFilters) ([]*domain.Photo, error) {
 	collection := repo.db.Collection("photos")
 	photos := make([]*domain.Photo, 0)
-	cursor, err := collection.Find(ctx, filters, &options.FindOptions{
-		Sort: map[string]int{"timestamp": -1},
+
+	query := bson.M{}
+
+	if filters.DeviceID != "" {
+		query["device_id"] = filters.DeviceID
+	}
+
+	if filters.StartTime != nil || filters.EndTime != nil {
+		timestampFilter := bson.M{}
+
+		if filters.StartTime != nil {
+			timestampFilter["$gte"] = *filters.StartTime
+		}
+
+		if filters.EndTime != nil {
+			timestampFilter["$lte"] = *filters.EndTime
+		}
+
+		query["timestamp"] = timestampFilter
+	}
+
+	cursor, err := collection.Find(ctx, query, &options.FindOptions{
+		Sort: bson.M{"timestamp": -1},
 	})
 	if err != nil {
 		return nil, err
